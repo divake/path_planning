@@ -9,8 +9,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-                "/../../MotionPlanning/")
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import Control.draw as draw
 import CurvesGenerator.reeds_shepp as rs

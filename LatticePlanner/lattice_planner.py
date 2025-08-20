@@ -5,8 +5,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-                "/../../MotionPlanning/")
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from CurvesGenerator import cubic_spline, quintic_polynomial, quartic_polynomial
 import LatticePlanner.env as env
