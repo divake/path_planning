@@ -1,0 +1,81 @@
+{
+  "n_trials": 1000,
+  "methods": [
+    "naive",
+    "ensemble",
+    "learnable_cp"
+  ],
+  "overall_stats": {
+    "naive": {
+      "collision_rate": {
+        "mean": 0.488,
+        "std": 0.500106094849989,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "success_rate": 0.512,
+      "path_length": {
+        "mean": 62.92414307377523,
+        "std": 5.618047010742323
+      },
+      "clearance": {
+        "mean": 1.082247689659107,
+        "std": 0.5657254605229516
+      },
+      "planning_time": {
+        "mean": 0.123033709184072,
+        "std": 0.021829566155480058
+      }
+    },
+    "ensemble": {
+      "collision_rate": {
+        "mean": 0.191,
+        "std": 0.3932857404911519,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "success_rate": 0.809,
+      "path_length": {
+        "mean": 72.50537208125986,
+        "std": 6.406505011845169
+      },
+      "clearance": {
+        "mean": 2.1658975617118057,
+        "std": 1.067629854607717
+      },
+      "planning_time": {
+        "mean": 0.611763967276035,
+        "std": 0.049729539465990374
+      }
+    },
+    "learnable_cp": {
+      "collision_rate": {
+        "mean": 0.05,
+        "std": 0.2180540014481448,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "success_rate": 0.95,
+      "path_length": {
+        "mean": 67.91727125075158,
+        "std": 6.096411961592509
+      },
+      "clearance": {
+        "mean": 1.9399783890028683,
+        "std": 0.9489667638270272
+      },
+      "planning_time": {
+        "mean": 0.3680131472744673,
+        "std": 0.0348071857784382
+      },
+      "coverage": {
+        "mean": 0.949932928592662,
+        "std": 0.010361544587330029
+      },
+      "adaptivity": {
+        "mean": 0.7897709577743597,
+        "std": 0.32048995861123525
+      }
+    }
+  }
+}
