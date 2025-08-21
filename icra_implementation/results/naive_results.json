@@ -1,0 +1,72 @@
+[
+  {
+    "scenario_id": 0,
+    "collision_rate": 0.3655765619980936,
+    "path_length": 38.156412657910266,
+    "planning_time": 0.2548385779825908,
+    "success": false
+  },
+  {
+    "scenario_id": 1,
+    "collision_rate": 0.3661924409378553,
+    "path_length": 31.439666894294078,
+    "planning_time": 0.1724250331072012,
+    "success": true
+  },
+  {
+    "scenario_id": 2,
+    "collision_rate": 0.27246381255303687,
+    "path_length": 35.21854859268107,
+    "planning_time": 0.18009242351698393,
+    "success": true
+  },
+  {
+    "scenario_id": 3,
+    "collision_rate": 0.3077530627360405,
+    "path_length": 36.005183560508755,
+    "planning_time": 0.25444666872526844,
+    "success": true
+  },
+  {
+    "scenario_id": 4,
+    "collision_rate": 0.3775491219575483,
+    "path_length": 34.265526100914045,
+    "planning_time": 0.2202406667357699,
+    "success": false
+  },
+  {
+    "scenario_id": 5,
+    "collision_rate": 0.2219719940087978,
+    "path_length": 32.23089173791843,
+    "planning_time": 0.1600787893237603,
+    "success": false
+  },
+  {
+    "scenario_id": 6,
+    "collision_rate": 0.28273978040680603,
+    "path_length": 34.718996972758674,
+    "planning_time": 0.23193537570058875,
+    "success": true
+  },
+  {
+    "scenario_id": 7,
+    "collision_rate": 0.37064114385544467,
+    "path_length": 34.43054873021717,
+    "planning_time": 0.29905391254032254,
+    "success": true
+  },
+  {
+    "scenario_id": 8,
+    "collision_rate": 0.3270681811760803,
+    "path_length": 30.152839311510814,
+    "planning_time": 0.19564641406948996,
+    "success": false
+  },
+  {
+    "scenario_id": 9,
+    "collision_rate": 0.3667462246992149,
+    "path_length": 36.25243059610508,
+    "planning_time": 0.2762434627271645,
+    "success": true
+  }
+]
