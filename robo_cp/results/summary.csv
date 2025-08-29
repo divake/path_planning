@@ -1,4 +1,0 @@
-Method,Success Rate,Collision Rate,Avg Path Length,Std Path Length,Avg Min Clearance,Avg Planning Time,Num Successes,Num Collisions
-naive,100.0,100.0,28.284271247461913,0.0,0.0,0.005803823471069336,10,10
-traditional_cp,100.0,100.0,28.284271247461913,0.0,0.0,0.0063248157501220705,10,10
-learnable_cp,100.0,100.0,28.284271247461913,0.0,0.0,0.006232953071594239,10,10
