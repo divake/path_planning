@@ -1,3 +1,6 @@
 CLAUDE.md
 *.pyc
 *.pkl
+icra_paper_materials
+*.md
+*data/
