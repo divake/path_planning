@@ -31,67 +31,88 @@ class AblationStudies:
         
     def study_noise_levels(self, 
                           noise_levels: List[float] = None,
-                          num_trials: int = 100) -> Dict:
+                          num_trials: int = 500) -> Dict:
         """
         Study effect of different noise levels
+        FIXED: Calibrate separately for each noise level to maintain exchangeability
         
         Args:
             noise_levels: List of noise levels to test
-            num_trials: Number of trials per level
+            num_trials: Number of trials per level (increased from 100 to 500)
             
         Returns:
-            Results dictionary
+            Results dictionary with confidence intervals
         """
         if noise_levels is None:
-            noise_levels = [0.1, 0.2, 0.3, 0.4, 0.5]
+            noise_levels = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30]
         
         print("\n" + "="*60)
-        print("ABLATION: Noise Level Study")
+        print("ABLATION: Noise Level Study (Fixed Calibration)")
         print("="*60)
         
         results = {
             'naive': {
                 'levels': noise_levels,
                 'collision_rates': [],
+                'collision_rates_ci': [],  # Confidence intervals
                 'path_lengths': [],
-                'success_rates': []
+                'path_lengths_std': [],
+                'path_found_rates': [],  # New: Path found rate
+                'collision_free_success_rates': []  # New: Path found AND no collision
             },
             'standard_cp': {
                 'levels': noise_levels,
                 'collision_rates': [],
+                'collision_rates_ci': [],
                 'path_lengths': [],
-                'success_rates': []
+                'path_lengths_std': [],
+                'path_found_rates': [],
+                'collision_free_success_rates': [],
+                'tau_values': []  # Track tau for each noise level
             }
         }
         
         for noise_level in noise_levels:
-            print(f"\nTesting noise level: {noise_level}")
+            print(f"\nTesting noise level: {noise_level:.2f}")
             
-            # Initialize CP for this noise level
+            # CRITICAL FIX: Calibrate CP specifically for THIS noise level
+            # Use separate calibration and test sets to maintain exchangeability
             cp = ContinuousStandardCP(self.true_obstacles, "penetration")
-            cp.calibrate(ContinuousNoiseModel.add_thinning_noise,
-                        {'thin_factor': noise_level},
-                        num_samples=100, confidence=0.95)
             
-            naive_collisions = 0
-            cp_collisions = 0
+            # Use 500 samples for calibration to get stable tau
+            tau = cp.calibrate(ContinuousNoiseModel.add_thinning_noise,
+                             {'thin_factor': noise_level},
+                             num_samples=500, confidence=0.95)
+            
+            results['standard_cp']['tau_values'].append(tau)
+            print(f"  Calibrated τ = {tau:.3f} for noise level {noise_level:.2f}")
+            
+            # Track detailed metrics
+            naive_collision_count = 0
+            cp_collision_count = 0
+            naive_paths_found = 0
+            cp_paths_found = 0
+            naive_collision_free = 0
+            cp_collision_free = 0
             naive_lengths = []
             cp_lengths = []
-            naive_successes = 0
-            cp_successes = 0
+            
+            # Use different seeds for test set (non-overlapping with calibration)
+            test_seed_offset = 10000
             
             for trial in range(num_trials):
-                # Generate noisy perception
+                # Generate noisy perception with test seed
                 perceived = ContinuousNoiseModel.add_thinning_noise(
-                    self.true_obstacles, thin_factor=noise_level, seed=trial
+                    self.true_obstacles, thin_factor=noise_level, 
+                    seed=test_seed_offset + trial
                 )
                 
                 # Naive planning
-                planner = RRTStar((5, 15), (45, 15), perceived, max_iter=500)
+                planner = RRTStar((5, 15), (45, 15), perceived, max_iter=1000)
                 path = planner.plan()
                 
                 if path:
-                    naive_successes += 1
+                    naive_paths_found += 1
                     naive_lengths.append(planner.get_metrics()['path_length'])
                     
                     # Check collisions
@@ -99,15 +120,17 @@ class AblationStudies:
                         self.env.point_in_obstacle(p[0], p[1]) for p in path
                     )
                     if has_collision:
-                        naive_collisions += 1
+                        naive_collision_count += 1
+                    else:
+                        naive_collision_free += 1
                 
-                # CP planning
+                # CP planning with inflated obstacles
                 inflated = cp.inflate_obstacles(perceived)
-                cp_planner = RRTStar((5, 15), (45, 15), inflated, max_iter=500)
+                cp_planner = RRTStar((5, 15), (45, 15), inflated, max_iter=1000)
                 cp_path = cp_planner.plan()
                 
                 if cp_path:
-                    cp_successes += 1
+                    cp_paths_found += 1
                     cp_lengths.append(cp_planner.get_metrics()['path_length'])
                     
                     # Check collisions
@@ -115,31 +138,50 @@ class AblationStudies:
                         self.env.point_in_obstacle(p[0], p[1]) for p in cp_path
                     )
                     if has_collision:
-                        cp_collisions += 1
+                        cp_collision_count += 1
+                    else:
+                        cp_collision_free += 1
             
-            # Store results
-            results['naive']['collision_rates'].append(
-                (naive_collisions / naive_successes * 100) if naive_successes > 0 else 0
-            )
-            results['naive']['path_lengths'].append(
-                np.mean(naive_lengths) if naive_lengths else 0
-            )
-            results['naive']['success_rates'].append(
-                naive_successes / num_trials * 100
-            )
+            # Calculate metrics with proper definitions
+            # Collision rate: Among paths found, what percentage collided?
+            naive_collision_rate = (naive_collision_count / naive_paths_found * 100) if naive_paths_found > 0 else 0
+            cp_collision_rate = (cp_collision_count / cp_paths_found * 100) if cp_paths_found > 0 else 0
             
-            results['standard_cp']['collision_rates'].append(
-                (cp_collisions / cp_successes * 100) if cp_successes > 0 else 0
-            )
-            results['standard_cp']['path_lengths'].append(
-                np.mean(cp_lengths) if cp_lengths else 0
-            )
-            results['standard_cp']['success_rates'].append(
-                cp_successes / num_trials * 100
-            )
+            # Calculate confidence intervals (Wilson score interval for proportions)
+            from scipy import stats
             
-            print(f"  Naive: {naive_collisions}/{naive_successes} collisions")
-            print(f"  CP: {cp_collisions}/{cp_successes} collisions")
+            def wilson_ci(successes, total, confidence=0.95):
+                """Calculate Wilson score confidence interval"""
+                if total == 0:
+                    return (0, 0)
+                p = successes / total
+                z = stats.norm.ppf((1 + confidence) / 2)
+                denominator = 1 + z**2 / total
+                center = (p + z**2 / (2 * total)) / denominator
+                margin = z * np.sqrt((p * (1 - p) / total + z**2 / (4 * total**2))) / denominator
+                return ((center - margin) * 100, (center + margin) * 100)
+            
+            naive_ci = wilson_ci(naive_collision_count, naive_paths_found)
+            cp_ci = wilson_ci(cp_collision_count, cp_paths_found)
+            
+            # Store results with new metrics
+            results['naive']['collision_rates'].append(naive_collision_rate)
+            results['naive']['collision_rates_ci'].append(naive_ci)
+            results['naive']['path_lengths'].append(np.mean(naive_lengths) if naive_lengths else 0)
+            results['naive']['path_lengths_std'].append(np.std(naive_lengths) if naive_lengths else 0)
+            results['naive']['path_found_rates'].append(naive_paths_found / num_trials * 100)
+            results['naive']['collision_free_success_rates'].append(naive_collision_free / num_trials * 100)
+            
+            results['standard_cp']['collision_rates'].append(cp_collision_rate)
+            results['standard_cp']['collision_rates_ci'].append(cp_ci)
+            results['standard_cp']['path_lengths'].append(np.mean(cp_lengths) if cp_lengths else 0)
+            results['standard_cp']['path_lengths_std'].append(np.std(cp_lengths) if cp_lengths else 0)
+            results['standard_cp']['path_found_rates'].append(cp_paths_found / num_trials * 100)
+            results['standard_cp']['collision_free_success_rates'].append(cp_collision_free / num_trials * 100)
+            
+            print(f"  Naive: {naive_collision_count}/{naive_paths_found} collisions ({naive_collision_rate:.1f}% ± {(naive_ci[1]-naive_ci[0])/2:.1f}%)")
+            print(f"  CP: {cp_collision_count}/{cp_paths_found} collisions ({cp_collision_rate:.1f}% ± {(cp_ci[1]-cp_ci[0])/2:.1f}%)")
+            print(f"  CP maintains guarantee: {cp_collision_rate <= 5.0}")
         
         return results
     

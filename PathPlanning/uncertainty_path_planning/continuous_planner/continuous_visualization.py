@@ -279,19 +279,38 @@ class ContinuousVisualizer:
         """
         fig, axes = plt.subplots(2, 3, figsize=(18, 10))
         
-        # Plot 1: Collision rate vs noise level
+        # Plot 1: Collision rate vs noise level with confidence intervals
         if 'noise_levels' in ablation_data:
             ax = axes[0, 0]
             ax.set_title('Collision Rate vs Noise Level', fontweight='bold')
             
             for method, data in ablation_data['noise_levels'].items():
-                ax.plot(data['levels'], data['collision_rates'], 'o-',
-                       label=method, linewidth=2, markersize=6)
+                levels = data['levels']
+                rates = data['collision_rates']
+                
+                # Plot with error bars if confidence intervals are available
+                if 'collision_rates_ci' in data:
+                    ci_data = data['collision_rates_ci']
+                    # Ensure no negative error values
+                    yerr_lower = [max(0, rates[i] - ci[0]) for i, ci in enumerate(ci_data)]
+                    yerr_upper = [max(0, ci[1] - rates[i]) for i, ci in enumerate(ci_data)]
+                    yerr = [yerr_lower, yerr_upper]
+                    
+                    ax.errorbar(levels, rates, yerr=yerr, marker='o', 
+                              label=method, linewidth=2, markersize=6, capsize=4)
+                else:
+                    ax.plot(levels, rates, 'o-',
+                           label=method, linewidth=2, markersize=6)
+            
+            # Add 5% guarantee line for CP
+            ax.axhline(y=5, color='red', linestyle='--', alpha=0.5, 
+                      label='5% CP Guarantee')
             
             ax.set_xlabel('Noise Level')
             ax.set_ylabel('Collision Rate (%)')
             ax.legend()
             ax.grid(True, alpha=0.3)
+            ax.set_ylim(bottom=0)
         
         # Plot 2: Path length vs noise level
         if 'noise_levels' in ablation_data:
@@ -308,20 +327,26 @@ class ContinuousVisualizer:
             ax.legend()
             ax.grid(True, alpha=0.3)
         
-        # Plot 3: Success rate vs noise level
+        # Plot 3: Collision-free success rate vs noise level
         if 'noise_levels' in ablation_data:
             ax = axes[0, 2]
-            ax.set_title('Success Rate vs Noise Level', fontweight='bold')
+            ax.set_title('Collision-Free Success Rate vs Noise Level', fontweight='bold')
             
             for method, data in ablation_data['noise_levels'].items():
-                if 'success_rates' in data:
-                    ax.plot(data['levels'], data['success_rates'], 'o-',
+                # Use collision_free_success_rates instead of success_rates
+                if 'collision_free_success_rates' in data:
+                    ax.plot(data['levels'], data['collision_free_success_rates'], 'o-',
                            label=method, linewidth=2, markersize=6)
+                elif 'path_found_rates' in data:
+                    # Fallback to path_found_rates if collision_free not available
+                    ax.plot(data['levels'], data['path_found_rates'], 'o--',
+                           label=f"{method} (path found)", linewidth=2, markersize=6, alpha=0.5)
             
             ax.set_xlabel('Noise Level')
-            ax.set_ylabel('Success Rate (%)')
+            ax.set_ylabel('Collision-Free Success Rate (%)')
             ax.legend()
             ax.grid(True, alpha=0.3)
+            ax.set_ylim(0, 105)
         
         # Plot 4: Computation time comparison
         if 'computation_times' in ablation_data:

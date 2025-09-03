@@ -14,42 +14,96 @@ class ContinuousEnvironment:
     Continuous 2D environment with obstacles
     """
     
-    def __init__(self, width: float = 50.0, height: float = 30.0):
+    def __init__(self, width: float = 50.0, height: float = 30.0, 
+                 env_type: str = "passages"):
         """
         Initialize continuous environment
         
         Args:
             width: Environment width
             height: Environment height
+            env_type: Type of environment ("passages", "cluttered", "maze", "open", "narrow")
         """
         self.width = width
         self.height = height
         self.bounds = (0, width, 0, height)
+        self.env_type = env_type
         
-        # Define obstacles as continuous rectangles (x, y, width, height)
+        # Define obstacles based on environment type
         self.obstacles = self._create_obstacles()
         
     def _create_obstacles(self) -> List[Tuple[float, float, float, float]]:
         """
-        Create obstacle configuration similar to discrete environment
+        Create obstacle configuration based on environment type
         """
         obstacles = []
         
-        # Boundaries (walls)
+        # Always add boundaries (walls)
         obstacles.append((0, 0, self.width, 0.5))  # Bottom
         obstacles.append((0, self.height-0.5, self.width, 0.5))  # Top
         obstacles.append((0, 0, 0.5, self.height))  # Left
         obstacles.append((self.width-0.5, 0, 0.5, self.height))  # Right
         
-        # Internal obstacles (similar to discrete layout)
-        # Horizontal wall with gap
-        obstacles.append((10, 14.5, 10, 1))  # Horizontal wall at y=15
-        
-        # Vertical walls creating passages
-        obstacles.append((20, 0, 1, 14.5))  # First vertical wall
-        obstacles.append((30, 15.5, 1, 14.5))  # Second vertical wall
-        obstacles.append((40, 0, 1, 15.5))  # Third vertical wall
-        
+        if self.env_type == "passages":
+            # Original environment with passages
+            obstacles.append((10, 14.5, 10, 1))  # Horizontal wall
+            obstacles.append((20, 0, 1, 14.5))  # First vertical wall
+            obstacles.append((30, 15.5, 1, 14.5))  # Second vertical wall
+            obstacles.append((40, 0, 1, 15.5))  # Third vertical wall
+            
+        elif self.env_type == "cluttered":
+            # Cluttered environment with many small obstacles
+            # Random-looking but deterministic placement
+            obstacle_positions = [
+                (8, 5, 3, 3), (15, 8, 2, 4), (22, 4, 3, 2),
+                (28, 10, 2, 3), (35, 6, 3, 3), (42, 12, 2, 2),
+                (10, 20, 3, 2), (18, 22, 2, 3), (25, 18, 4, 2),
+                (32, 23, 2, 2), (38, 19, 3, 3), (45, 24, 2, 2),
+                (5, 12, 2, 3), (12, 15, 3, 2), (20, 13, 2, 2),
+                (27, 15, 2, 4), (34, 14, 3, 2), (41, 17, 2, 3)
+            ]
+            obstacles.extend(obstacle_positions)
+            
+        elif self.env_type == "maze":
+            # Maze-like environment with narrow corridors
+            # Horizontal walls
+            obstacles.extend([
+                (5, 5, 15, 1), (25, 5, 20, 1),
+                (5, 10, 10, 1), (20, 10, 15, 1), (40, 10, 5, 1),
+                (10, 15, 15, 1), (30, 15, 10, 1),
+                (5, 20, 20, 1), (30, 20, 15, 1),
+                (10, 25, 10, 1), (25, 25, 15, 1)
+            ])
+            # Vertical walls
+            obstacles.extend([
+                (10, 0, 1, 5), (20, 5, 1, 5), (35, 10, 1, 5),
+                (15, 10, 1, 5), (25, 15, 1, 5), (40, 15, 1, 5),
+                (5, 15, 1, 5), (30, 20, 1, 5), (45, 20, 1, 10)
+            ])
+            
+        elif self.env_type == "open":
+            # Open environment with few large obstacles
+            obstacles.extend([
+                (12, 8, 8, 6),   # Large central obstacle
+                (30, 5, 6, 8),   # Right side obstacle
+                (8, 18, 10, 4),  # Top left obstacle
+                (35, 20, 8, 4)   # Top right obstacle
+            ])
+            
+        elif self.env_type == "narrow":
+            # Environment with narrow passages (stress test for CP)
+            # Create zigzag narrow passages
+            obstacles.extend([
+                (0, 10, 20, 2),    # First barrier
+                (22, 10, 28, 2),   # Gap at x=20-22
+                (10, 18, 40, 2),   # Second barrier
+                (0, 18, 8, 2),     # Gap at x=8-10
+                (20, 6, 2, 8),     # Vertical barrier 1
+                (20, 16, 2, 8),    # Vertical barrier 2
+                (35, 4, 2, 10),    # Vertical barrier 3
+                (35, 16, 2, 10)    # Vertical barrier 4
+            ])
+            
         return obstacles
     
     def point_in_obstacle(self, x: float, y: float) -> bool:
