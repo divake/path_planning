@@ -1,0 +1,880 @@
+
+Training Learnable CP model...
+
+======================================================================
+TRAINING FULL LEARNABLE CP MODEL
+======================================================================
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.020
+    75th: 0.168
+    90th: 0.210
+    95th: 0.252
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Epoch 1/20:
+  Loss: 2.0626
+  Coverage: 100.0%
+  Dynamic τ: 0.500
+  Avg margin: 0.686
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
+    95th: 0.186
+    99th: 0.347
+  τ @ 95% = 0.347
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.386]
+  Percentiles:
+    50th: 0.229
+    75th: 0.307
+    90th: 0.353
+    95th: 0.376
+    99th: 0.386
+  τ @ 95% = 0.386
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.002, 0.991]
+  Percentiles:
+    50th: 0.359
+    75th: 0.562
+    90th: 0.754
+    95th: 0.974
+    99th: 0.991
+  τ @ 95% = 0.991
+
+Calibrating Continuous CP (30 samples)...
+Nonconformity type: penetration
+
+Calibration Results:
+  Score range: [0.000, 0.347]
+  Percentiles:
+    50th: 0.008
+    75th: 0.033
+    90th: 0.185
