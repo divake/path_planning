@@ -148,12 +148,12 @@ class LocationScoringNetwork(nn.Module):
             features: Batch of location features [B, 8] or [B*L, 8] for vectorized
         
         Returns:
-            scores: Safety scores for each location [0, 1]
+            scores: Raw nonconformity scores (can be negative)
         """
         scores = self.scoring_network(features)
         
-        # Apply sigmoid to ensure output in [0, 1] range
-        scores = torch.sigmoid(scores)
+        # NO sigmoid - allow negative scores as per classification implementation
+        # Scores can range from negative to positive values
         
         # L2 regularization during training
         if self.training:
@@ -171,7 +171,7 @@ class ProperLearnableCP:
     with phase-based training and margin loss
     """
     
-    def __init__(self, alpha: float = 0.05, max_tau: float = 0.5):
+    def __init__(self, alpha: float = 0.1, max_tau: float = 0.5):  # 90% coverage
         self.alpha = alpha
         self.max_tau = max_tau
         
@@ -210,7 +210,7 @@ class ProperLearnableCP:
                 ContinuousNoiseModel.add_thinning_noise,
                 {'thin_factor': 0.2},
                 num_samples=100,
-                confidence=1 - self.alpha
+                confidence=0.90  # 90% coverage
             )
             self.baseline_taus[env_type] = tau
             print(f"  {env_type}: τ = {tau:.3f}")
@@ -337,11 +337,12 @@ class ProperLearnableCP:
                 scores = self.scoring_net(batch_features)
                 
                 # PRIMARY: Margin-based discrimination loss
-                # Low targets (dangerous) should have low scores
+                # Low targets (dangerous) should have low scores  
                 # High targets (safe) should have high scores
-                # Note: scores are now in [0, 1] due to sigmoid
-                margin = 0.2  # Smaller margin for sigmoid outputs
-                discrimination_loss = torch.relu((batch_targets - scores) * (2 * (batch_targets < 0.5).float() - 1) + margin).mean()
+                # Scores are raw values (can be negative)
+                margin = 0.5
+                # Simple margin loss: dangerous locations should score lower
+                discrimination_loss = torch.relu(margin - (batch_targets - scores).abs()).mean()
                 
                 # Coverage loss (phase 2+)
                 if phase >= 2:
@@ -349,7 +350,7 @@ class ProperLearnableCP:
                     threshold = 0.3  # Simulated tau
                     covered = (scores < threshold).float()
                     coverage = covered.mean()
-                    target_coverage = 1 - self.alpha
+                    target_coverage = 0.90  # 90% coverage
                     coverage_loss = (coverage - target_coverage).pow(2)
                 else:
                     coverage_loss = 0
@@ -424,9 +425,11 @@ class ProperLearnableCP:
         with torch.no_grad():
             scores = self.scoring_net(features_tensor).numpy()
         
-        # Convert scores [0, 1] to tau values [0, max_tau]
-        # Ensure non-negative tau values
-        tau_values = np.maximum(scores * self.max_tau, 0.0)
+        # Convert raw scores to tau values
+        # Scores can be negative (like in classification)
+        # Map to [0, max_tau] using tanh transformation
+        # tanh maps (-inf, +inf) to (-1, +1), then scale to [0, max_tau]
+        tau_values = (np.tanh(scores) + 1) * 0.5 * self.max_tau
         return tau_values
     
     def evaluate_comprehensive(self, num_trials: int = 100) -> Dict:
@@ -533,7 +536,7 @@ def main():
     """Run the proper implementation"""
     
     # Create and train model
-    model = ProperLearnableCP(alpha=0.05, max_tau=0.5)
+    model = ProperLearnableCP(alpha=0.1, max_tau=0.5)  # 90% coverage
     model.train_phased(num_epochs=30)
     
     # Evaluate

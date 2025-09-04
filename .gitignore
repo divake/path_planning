@@ -4,3 +4,4 @@ CLAUDE.md
 icra_paper_materials
 *.md
 *data/
+*.pth
