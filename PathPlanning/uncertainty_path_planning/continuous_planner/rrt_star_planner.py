@@ -34,7 +34,9 @@ class RRTStar:
                  step_size: float = 2.0,
                  goal_sample_rate: float = 0.1,
                  search_radius: float = 5.0,
-                 goal_threshold: float = 1.0):
+                 goal_threshold: float = 1.0,
+                 robot_radius: float = 0.5,
+                 seed: Optional[int] = None):
         """
         Initialize RRT* planner
         
@@ -48,7 +50,14 @@ class RRTStar:
             goal_sample_rate: Probability of sampling goal
             search_radius: Radius for rewiring
             goal_threshold: Distance threshold to consider goal reached
+            robot_radius: Radius of the robot for collision checking
+            seed: Random seed for reproducibility
         """
+        # Set seeds FIRST for reproducibility
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+            
         self.start = Node(start[0], start[1])
         self.goal = Node(goal[0], goal[1])
         self.obstacles = obstacles
@@ -58,6 +67,7 @@ class RRTStar:
         self.goal_sample_rate = goal_sample_rate
         self.search_radius = search_radius
         self.goal_threshold = goal_threshold
+        self.robot_radius = robot_radius  # Store robot radius
         
         self.nodes = [self.start]
         self.path = None
@@ -180,25 +190,40 @@ class RRTStar:
     def _collision_check(self, from_node: Node, to_node: Node) -> bool:
         """
         Check if path from_node to to_node collides with obstacles
+        INCLUDING robot radius
         
         Returns:
             True if collision, False if free
         """
-        # Sample along the line
-        steps = int(self._distance(from_node, to_node) / 0.1) + 1
+        # Sample along the line with finer resolution for robot radius
+        steps = int(self._distance(from_node, to_node) / 0.05) + 1  # Finer sampling
         
         for i in range(steps + 1):
             t = i / float(steps)
             x = from_node.x + t * (to_node.x - from_node.x)
             y = from_node.y + t * (to_node.y - from_node.y)
             
-            # Check against each obstacle
+            # Check against each obstacle with robot radius
             for obs in self.obstacles:
                 if isinstance(obs, tuple) and len(obs) == 4:
                     # Rectangle obstacle (x, y, width, height)
                     ox, oy, w, h = obs
-                    if ox <= x <= ox + w and oy <= y <= oy + h:
-                        return True
+                    
+                    # Expand obstacle by robot radius for collision check
+                    # Check if robot center is within expanded obstacle
+                    if (ox - self.robot_radius <= x <= ox + w + self.robot_radius and
+                        oy - self.robot_radius <= y <= oy + h + self.robot_radius):
+                        
+                        # More precise check: distance from point to rectangle
+                        # Calculate closest point on rectangle to robot center
+                        closest_x = max(ox, min(x, ox + w))
+                        closest_y = max(oy, min(y, oy + h))
+                        
+                        # Check if distance is less than robot radius
+                        dist_sq = (x - closest_x)**2 + (y - closest_y)**2
+                        if dist_sq <= self.robot_radius**2:
+                            return True
+                            
                 elif callable(obs):
                     # Custom obstacle function
                     if obs(x, y):
@@ -228,6 +253,27 @@ class RRTStar:
             if node.parent:
                 edges.append((node.parent, node))
         return edges
+    
+    def compute_path_length(self, path: List[Tuple[float, float]]) -> float:
+        """
+        Compute actual Euclidean path length
+        
+        Args:
+            path: List of (x, y) waypoints
+            
+        Returns:
+            Total path length in units
+        """
+        if not path or len(path) < 2:
+            return 0.0
+            
+        length = 0.0
+        for i in range(len(path) - 1):
+            dx = path[i+1][0] - path[i][0]
+            dy = path[i+1][1] - path[i][1]
+            length += math.sqrt(dx**2 + dy**2)
+            
+        return length
     
     def get_metrics(self) -> Dict:
         """Get planning metrics"""

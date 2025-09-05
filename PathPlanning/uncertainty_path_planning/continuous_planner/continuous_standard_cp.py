@@ -140,7 +140,8 @@ class ContinuousStandardCP:
                   noise_model,
                   noise_params: Dict,
                   num_samples: int = 200,
-                  confidence: float = 0.95) -> float:
+                  confidence: float = 0.95,
+                  base_seed: int = None) -> float:
         """
         Calibration phase to compute τ
         
@@ -149,6 +150,7 @@ class ContinuousStandardCP:
             noise_params: Parameters for noise model
             num_samples: Number of calibration samples
             confidence: Desired confidence level
+            base_seed: Base random seed for reproducibility
             
         Returns:
             Calibrated τ value
@@ -159,8 +161,9 @@ class ContinuousStandardCP:
         print(f"Nonconformity type: {self.nonconformity_type}")
         
         for i in range(num_samples):
-            # Generate noisy perception
-            perceived_obs = noise_model(self.true_obstacles, **noise_params, seed=i)
+            # Generate noisy perception with deterministic seed
+            seed = i if base_seed is None else base_seed + i
+            perceived_obs = noise_model(self.true_obstacles, **noise_params, seed=seed)
             
             # Compute nonconformity score
             if self.nonconformity_type == "penetration":

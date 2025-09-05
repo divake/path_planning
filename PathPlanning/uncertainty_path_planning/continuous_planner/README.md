@@ -1,35 +1,34 @@
-# Continuous Planner with Conformal Prediction
+# Uncertainty-Aware Path Planning with Conformal Prediction
 
-This directory contains all code related to **continuous path planning** with conformal prediction using RRT* algorithm.
+Clean implementation for ICRA 2025 submission comparing Naive, Standard CP, and Learnable CP methods.
 
-## Main Files
+## Framework Structure
 
-### Core Implementation
-- `continuous_cp_system.py` - Complete continuous CP implementation with RRT* planner
+### Core Files (8 files only)
+- `continuous_environment.py` - Environment definition with obstacles
+- `continuous_standard_cp.py` - Standard Conformal Prediction implementation
+- `learnable_cp_final.py` - Learnable CP with adaptive tau prediction
+- `rrt_star_planner.py` - RRT* path planner with robot radius
+- `cross_validation_environments.py` - Training and test environments
+- `continuous_visualization.py` - Visualization utilities
+- `proper_monte_carlo_evaluation.py` - Monte Carlo evaluation framework
+- `framework_verification.py` - Framework verification tests
 
-## Key Features
+### Main Entry Point
+- `run_experiments.py` - Run all experiments and generate paper figures
 
-- **Planner**: RRT* (Rapidly-exploring Random Tree Star)
-- **Space**: Continuous 2D (50.0 × 30.0 units)
-- **Noise Model**: Continuous obstacle shrinking/expansion
-- **Nonconformity Score**: Continuous penetration depth (0.00 to 0.15)
+## Quick Start
 
-## Key Results
+### 1. Verify Framework
+```bash
+python framework_verification.py
+```
 
-- **τ Value**: 0.12 (continuous, precise value)
-- **Flexibility**: Can achieve any τ (0.08, 0.10, 0.12, 0.15, etc.)
-- **Coverage Control**: Smooth, can achieve any desired percentage
-- **Collision Rate**: 6.5% → 0.5% with CP
-- **Path Length**: 47.9 → 52.6 units
+### 2. Run Full Experiments
+```bash
+python run_experiments.py
+```
 
-## Advantages Over Discrete
-
-1. **Fine-grained τ**: Any value possible (not just integers)
-2. **Precise Coverage**: Can achieve exactly 90%, 95%, or any target
-3. **Smooth Inflation**: Obstacles inflate by exact amounts
-4. **Better Trade-offs**: Can fine-tune safety vs efficiency
-
-## Results Directory
-
-Visualizations saved in `results/`:
-- `continuous_system.png` - Example of continuous CP in action
+## Results Location
+- Experiment results: `results/experiment_results_*.json`
+- Figures: `results/figures/`

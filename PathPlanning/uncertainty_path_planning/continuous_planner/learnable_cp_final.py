@@ -121,6 +121,7 @@ class PrincipledFeatureExtractor:
     """
     Feature extraction with principled design
     Based on geometric properties relevant to collision risk
+    All features normalized to [0, 1] range
     """
     
     @staticmethod
@@ -128,10 +129,11 @@ class PrincipledFeatureExtractor:
                          goal: Optional[Tuple] = None) -> np.ndarray:
         """
         Extract 10 principled features for collision risk assessment
+        ALL NORMALIZED to [0, 1]
         """
         features = []
         
-        # 1. Minimum clearance (most important)
+        # 1. Minimum clearance (normalized by max expected clearance)
         min_dist = float('inf')
         for obs in obstacles:
             dx = max(obs[0] - x, 0, x - (obs[0] + obs[2]))
@@ -139,9 +141,10 @@ class PrincipledFeatureExtractor:
             dist = np.sqrt(dx**2 + dy**2)
             min_dist = min(min_dist, dist)
         clearance = min_dist
-        features.append(clearance)
+        # Normalize by max expected clearance (10 units)
+        features.append(min(clearance / 10.0, 1.0))
         
-        # 2. Average clearance to nearest 3 obstacles
+        # 2. Average clearance to nearest 3 obstacles (normalized)
         distances = []
         for obs in obstacles:
             cx, cy = obs[0] + obs[2]/2, obs[1] + obs[3]/2
@@ -149,21 +152,24 @@ class PrincipledFeatureExtractor:
             distances.append(dist)
         distances.sort()
         avg_near_clear = np.mean(distances[:3]) if len(distances) >= 3 else clearance
-        features.append(avg_near_clear)
+        # Normalize by max expected distance (20 units)
+        features.append(min(avg_near_clear / 20.0, 1.0))
         
-        # 3. Obstacle density in 5-unit radius
+        # 3. Obstacle density in 5-unit radius (normalized by max expected)
         density_5 = sum(1 for obs in obstacles 
                        if np.sqrt((x - (obs[0] + obs[2]/2))**2 + 
                                  (y - (obs[1] + obs[3]/2))**2) < 5)
-        features.append(density_5)
+        # Normalize by max expected density (10 obstacles)
+        features.append(min(density_5 / 10.0, 1.0))
         
-        # 4. Obstacle density in 10-unit radius  
+        # 4. Obstacle density in 10-unit radius (normalized)
         density_10 = sum(1 for obs in obstacles 
                         if np.sqrt((x - (obs[0] + obs[2]/2))**2 + 
                                   (y - (obs[1] + obs[3]/2))**2) < 10)
-        features.append(density_10)
+        # Normalize by max expected density (20 obstacles)
+        features.append(min(density_10 / 20.0, 1.0))
         
-        # 5. Passage width estimate (clearance in 4 directions)
+        # 5. Passage width estimate (normalized)
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
         passage_widths = []
         for dx, dy in directions:
@@ -182,16 +188,18 @@ class PrincipledFeatureExtractor:
                     break
             passage_widths.append(dist if dist > 0 else 10)
         min_passage = min(passage_widths)
-        features.append(min_passage)
+        # Normalize by max passage width (10 units)
+        features.append(min(min_passage / 10.0, 1.0))
         
         # 6-7. Position in environment (normalized)
         features.append(x / 50.0)  # x position
         features.append(y / 30.0)  # y position
         
-        # 8. Distance to goal (if provided)
+        # 8. Distance to goal (normalized)
         if goal:
             goal_dist = np.sqrt((x - goal[0])**2 + (y - goal[1])**2)
-            features.append(goal_dist / 50.0)
+            # Normalize by diagonal distance (about 60 units)
+            features.append(min(goal_dist / 60.0, 1.0))
         else:
             features.append(0.5)
         
@@ -199,7 +207,7 @@ class PrincipledFeatureExtractor:
         near_boundary = 1.0 if (x < 5 or x > 45 or y < 5 or y > 25) else 0.0
         features.append(near_boundary)
         
-        # 10. Variance of nearby clearances (environment complexity)
+        # 10. Variance of nearby clearances (normalized)
         sample_clearances = []
         for _ in range(10):
             sx = x + np.random.uniform(-5, 5)
@@ -212,7 +220,8 @@ class PrincipledFeatureExtractor:
                 s_min_dist = min(s_min_dist, s_dist)
             sample_clearances.append(s_min_dist)
         complexity = np.std(sample_clearances) if len(sample_clearances) > 1 else 0
-        features.append(complexity)
+        # Normalize by max expected std (5 units)
+        features.append(min(complexity / 5.0, 1.0))
         
         return np.array(features, dtype=np.float32)
 
@@ -536,9 +545,11 @@ class FinalLearnableCP:
     def evaluate_comprehensive(self, num_trials: int = 500):
         """
         Comprehensive evaluation with MORE trials
+        Now with robot radius and proper path length
         """
         print(f"\n{'='*70}")
         print(f"EVALUATION with {num_trials} trials")
+        print(f"WITH ROBOT RADIUS = 0.5 and EUCLIDEAN PATH LENGTH")
         print(f"{'='*70}")
         
         results = {
@@ -547,8 +558,8 @@ class FinalLearnableCP:
             'learnable': {'collisions': 0, 'paths': 0, 'lengths': [], 'times': [], 'taus': []}
         }
         
-        # Test different noise levels
-        noise_levels = [0.15, 0.20, 0.25]
+        # Use more realistic noise level (15%)
+        noise_levels = [0.10, 0.15, 0.20]  # More realistic range
         
         for trial in range(num_trials):
             env_type = ['passages', 'open', 'narrow'][trial % 3]
@@ -567,17 +578,20 @@ class FinalLearnableCP:
             
             # NAIVE
             start = time.time()
-            # Set numpy seed for RRT* random sampling
-            np.random.seed(seed)
-            planner = RRTStar((5, 15), (45, 15), perceived, max_iter=500)
+            # RRT* with robot radius and proper seeding
+            planner = RRTStar((5, 15), (45, 15), perceived, 
+                            max_iter=500, robot_radius=0.5, seed=seed)
             path = planner.plan()
             results['naive']['times'].append(time.time() - start)
             
             if path:
                 results['naive']['paths'] += 1
-                results['naive']['lengths'].append(len(path))
+                # Use EUCLIDEAN path length, not waypoint count
+                path_length = planner.compute_path_length(path)
+                results['naive']['lengths'].append(path_length)
+                # Check collision with robot radius
                 for p in path:
-                    if env.point_in_obstacle(p[0], p[1]):
+                    if self.check_collision_with_radius(p, env.obstacles, radius=0.5):
                         results['naive']['collisions'] += 1
                         break
             
@@ -593,16 +607,17 @@ class FinalLearnableCP:
                     obs[3] + 2 * tau
                 ))
             
-            np.random.seed(seed + 1000)  # Different seed for Standard CP
-            planner = RRTStar((5, 15), (45, 15), inflated, max_iter=500)
+            planner = RRTStar((5, 15), (45, 15), inflated, 
+                            max_iter=500, robot_radius=0.5, seed=seed+1000)
             path = planner.plan()
             results['standard']['times'].append(time.time() - start)
             
             if path:
                 results['standard']['paths'] += 1
-                results['standard']['lengths'].append(len(path))
+                path_length = planner.compute_path_length(path)
+                results['standard']['lengths'].append(path_length)
                 for p in path:
-                    if env.point_in_obstacle(p[0], p[1]):
+                    if self.check_collision_with_radius(p, env.obstacles, radius=0.5):
                         results['standard']['collisions'] += 1
                         break
             
@@ -621,16 +636,17 @@ class FinalLearnableCP:
                     obs[3] + 2 * local_tau
                 ))
             
-            np.random.seed(seed + 2000)  # Different seed for Learnable CP
-            planner = RRTStar((5, 15), (45, 15), adaptive_inflated, max_iter=500)
+            planner = RRTStar((5, 15), (45, 15), adaptive_inflated,
+                            max_iter=500, robot_radius=0.5, seed=seed+2000)
             path = planner.plan()
             results['learnable']['times'].append(time.time() - start)
             
             if path:
                 results['learnable']['paths'] += 1
-                results['learnable']['lengths'].append(len(path))
+                path_length = planner.compute_path_length(path)
+                results['learnable']['lengths'].append(path_length)
                 for p in path:
-                    if env.point_in_obstacle(p[0], p[1]):
+                    if self.check_collision_with_radius(p, env.obstacles, radius=0.5):
                         results['learnable']['collisions'] += 1
                         break
             
@@ -700,6 +716,23 @@ class FinalLearnableCP:
         center = (p + z**2 / (2 * total)) / denominator
         margin = z * np.sqrt((p * (1 - p) / total + z**2 / (4 * total**2))) / denominator
         return max(0, center - margin), min(1, center + margin)
+    
+    def check_collision_with_radius(self, point: Tuple, obstacles: List, radius: float = 0.5) -> bool:
+        """
+        Check if robot at point collides with any obstacle
+        Considers robot radius
+        """
+        x, y = point
+        for obs in obstacles:
+            ox, oy, w, h = obs
+            # Find closest point on rectangle to robot center
+            closest_x = max(ox, min(x, ox + w))
+            closest_y = max(oy, min(y, oy + h))
+            # Check if distance is less than robot radius
+            dist_sq = (x - closest_x)**2 + (y - closest_y)**2
+            if dist_sq <= radius**2:
+                return True
+        return False
 
 
 def main():
