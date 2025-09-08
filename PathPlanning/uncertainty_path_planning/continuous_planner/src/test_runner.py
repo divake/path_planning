@@ -16,11 +16,7 @@ from typing import Dict, List, Tuple
 import matplotlib.pyplot as plt
 
 from mrpb_map_parser import MRPBMapParser
-from rrt_star_planner import RRTStar
-from continuous_standard_cp import ContinuousStandardCP
-from learnable_cp_final import FinalLearnableCP
-from proper_monte_carlo_evaluation import monte_carlo_evaluation_single_env
-from continuous_visualization import visualize_comparison
+from rrt_star_grid_planner import RRTStarGrid
 
 
 class MRPBTestRunner:
@@ -71,7 +67,7 @@ class MRPBTestRunner:
         print(f"Noise level: {self.noise_params['perception_noise_level']*100:.0f}%")
         print(f"Monte Carlo trials: {self.eval_params['num_trials']}")
         print(f"Environments to test: {len(self.experiment_settings['test_environments'])}")
-        print(f"Methods: {', '.join(self.experiment_settings['methods'])}")
+        print(f"Method: Naive (no uncertainty consideration)")
     
     def run_single_test(self, env_name: str, test_id: int) -> Dict:
         """
@@ -115,33 +111,27 @@ class MRPBTestRunner:
         
         results = {}
         
-        # Test each method
-        for method in self.experiment_settings['methods_to_test']:
-            print(f"\n--- Testing {method.upper()} ---")
-            
-            if method == 'naive':
-                results[method] = self.test_naive(parser, start, goal)
-            elif method == 'standard_cp':
-                results[method] = self.test_standard_cp(parser, start, goal)
-            elif method == 'learnable_cp':
-                results[method] = self.test_learnable_cp(parser, start, goal)
+        # Test naive method only
+        print(f"\n--- Testing NAIVE ---")
+        results['naive'] = self.test_naive(parser, start, goal)
         
         return results
     
     def test_naive(self, parser: MRPBMapParser, start: Tuple, goal: Tuple) -> Dict:
         """Test naive planner (no uncertainty)"""
         
-        # Run RRT* directly on perceived obstacles
-        planner = RRTStar(
+        # Run RRT* with occupancy grid
+        planner = RRTStarGrid(
             start=start,
             goal=goal,
-            obstacles=parser.obstacles,
-            bounds=(parser.origin[0], parser.origin[0] + parser.width_meters,
-                   parser.origin[1], parser.origin[1] + parser.height_meters),
+            occupancy_grid=parser.occupancy_grid,
+            origin=parser.origin,
+            resolution=parser.resolution,
             robot_radius=self.robot_radius,
             step_size=self.planning_params['rrt_star']['step_size'],
             max_iter=self.planning_params['rrt_star']['max_iterations'],
-            goal_threshold=self.planning_params['rrt_star']['goal_threshold']
+            goal_threshold=self.planning_params['rrt_star']['goal_threshold'],
+            search_radius=self.planning_params['rrt_star']['search_radius']
         )
         
         start_time = time.time()
@@ -159,93 +149,6 @@ class MRPBTestRunner:
             'path': path,
             'path_length': path_length,
             'planning_time': planning_time,
-            'success': path is not None
-        }
-    
-    def test_standard_cp(self, parser: MRPBMapParser, start: Tuple, goal: Tuple) -> Dict:
-        """Test standard CP planner"""
-        
-        # TODO: Implement calibration and tau computation
-        # For now, using fixed tau
-        tau = 0.5  # meters
-        
-        # Inflate obstacles by tau
-        inflated_obstacles = self.inflate_obstacles(parser.obstacles, tau)
-        
-        # Run RRT* on inflated obstacles
-        planner = RRTStar(
-            start=start,
-            goal=goal,
-            obstacles=inflated_obstacles,
-            bounds=(parser.origin[0], parser.origin[0] + parser.width_meters,
-                   parser.origin[1], parser.origin[1] + parser.height_meters),
-            robot_radius=self.robot_radius,
-            step_size=self.planning_params['rrt_star']['step_size'],
-            max_iter=self.planning_params['rrt_star']['max_iterations'],
-            goal_threshold=self.planning_params['rrt_star']['goal_threshold']
-        )
-        
-        start_time = time.time()
-        path = planner.plan()
-        planning_time = time.time() - start_time
-        
-        if path:
-            path_length = planner.compute_path_length(path)
-            print(f"  Path found: {len(path)} waypoints, {path_length:.2f} m")
-            print(f"  Tau used: {tau:.3f} m")
-        else:
-            print(f"  No path found with tau={tau:.3f}!")
-            path_length = -1
-        
-        return {
-            'path': path,
-            'path_length': path_length,
-            'planning_time': planning_time,
-            'tau': tau,
-            'success': path is not None
-        }
-    
-    def test_learnable_cp(self, parser: MRPBMapParser, start: Tuple, goal: Tuple) -> Dict:
-        """Test learnable CP planner"""
-        
-        # TODO: Load trained model and compute adaptive tau
-        # For now, using environment-specific tau
-        tau_base = 0.3
-        tau_adaptive = tau_base * 1.2  # Placeholder for adaptive computation
-        
-        # Inflate obstacles by adaptive tau
-        inflated_obstacles = self.inflate_obstacles(parser.obstacles, tau_adaptive)
-        
-        # Run RRT* on inflated obstacles
-        planner = RRTStar(
-            start=start,
-            goal=goal,
-            obstacles=inflated_obstacles,
-            bounds=(parser.origin[0], parser.origin[0] + parser.width_meters,
-                   parser.origin[1], parser.origin[1] + parser.height_meters),
-            robot_radius=self.robot_radius,
-            step_size=self.planning_params['rrt_star']['step_size'],
-            max_iter=self.planning_params['rrt_star']['max_iterations'],
-            goal_threshold=self.planning_params['rrt_star']['goal_threshold']
-        )
-        
-        start_time = time.time()
-        path = planner.plan()
-        planning_time = time.time() - start_time
-        
-        if path:
-            path_length = planner.compute_path_length(path)
-            print(f"  Path found: {len(path)} waypoints, {path_length:.2f} m")
-            print(f"  Adaptive tau: {tau_adaptive:.3f} m")
-        else:
-            print(f"  No path found with tau={tau_adaptive:.3f}!")
-            path_length = -1
-        
-        return {
-            'path': path,
-            'path_length': path_length,
-            'planning_time': planning_time,
-            'tau': tau_adaptive,
             'success': path is not None
         }
     
@@ -326,12 +229,14 @@ class MRPBTestRunner:
             for test_name, test_results in env_results.items():
                 print(f"  {test_name}:")
                 
-                for method, results in test_results.items():
+                # Only naive method results
+                if 'naive' in test_results:
+                    results = test_results['naive']
                     success = "✓" if results.get('success', False) else "✗"
                     path_length = results.get('path_length', -1)
                     time_taken = results.get('planning_time', -1)
                     
-                    print(f"    {method:15s}: {success} "
+                    print(f"    naive: {success} "
                           f"Length={path_length:6.2f}m "
                           f"Time={time_taken:5.3f}s")
 

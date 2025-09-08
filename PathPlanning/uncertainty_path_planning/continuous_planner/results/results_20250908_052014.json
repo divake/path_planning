@@ -1,0 +1,168 @@
+{
+  "office01add": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.023159027099609375,
+        "success": false
+      }
+    },
+    "test_2": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.015410661697387695,
+        "success": false
+      }
+    },
+    "test_3": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.01073765754699707,
+        "success": false
+      }
+    }
+  },
+  "office02": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.014402627944946289,
+        "success": false
+      }
+    },
+    "test_2": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.013923168182373047,
+        "success": false
+      }
+    },
+    "test_3": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.013387441635131836,
+        "success": false
+      }
+    }
+  },
+  "shopping_mall": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.01279759407043457,
+        "success": false
+      }
+    },
+    "test_2": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.014369010925292969,
+        "success": false
+      }
+    },
+    "test_3": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.014696598052978516,
+        "success": false
+      }
+    }
+  },
+  "room02": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.011137723922729492,
+        "success": false
+      }
+    },
+    "test_2": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.01124119758605957,
+        "success": false
+      }
+    },
+    "test_3": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.010926246643066406,
+        "success": false
+      }
+    }
+  },
+  "maze": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.012098312377929688,
+        "success": false
+      }
+    },
+    "test_2": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.011849403381347656,
+        "success": false
+      }
+    },
+    "test_3": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.012001276016235352,
+        "success": false
+      }
+    }
+  },
+  "track": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.01312398910522461,
+        "success": false
+      }
+    }
+  },
+  "narrow_graph": {
+    "test_1": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.012845754623413086,
+        "success": false
+      }
+    },
+    "test_2": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.01084756851196289,
+        "success": false
+      }
+    },
+    "test_3": {
+      "naive": {
+        "path": null,
+        "path_length": -1,
+        "planning_time": 0.010957956314086914,
+        "success": false
+      }
+    }
+  }
+}
