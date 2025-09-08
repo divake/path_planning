@@ -1,0 +1,42 @@
+# Algorithm Configuration
+# Settings for RRT* and other planning algorithms
+
+planning:
+  # RRT* Parameters
+  rrt_star:
+    step_size: 2.0  # meters
+    max_iterations: 3000
+    goal_threshold: 1.0  # meters
+    search_radius: 5.0  # meters for rewiring
+    goal_sample_rate: 0.1  # probability of sampling goal
+    
+  # Path optimization
+  optimization:
+    smooth_path: false
+    smoothing_iterations: 10
+    smoothing_weight: 0.5
+
+# Experiment execution settings
+experiments:
+  # Which methods to compare
+  methods_to_test:
+    - naive
+    - standard_cp
+    - learnable_cp
+    
+  # Which environments to test
+  test_environments:
+    - office01add
+    - office02
+    - shopping_mall
+    - room02
+    - maze
+    - track
+    - narrow_graph
+    
+  # Output settings
+  output:
+    save_paths: true
+    save_visualizations: true
+    generate_report: true
+    verbose: true

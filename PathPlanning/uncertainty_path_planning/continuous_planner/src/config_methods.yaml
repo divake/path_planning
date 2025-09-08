@@ -1,0 +1,35 @@
+# Methods Configuration
+# Settings for Naive, Standard CP, and Learnable CP
+
+methods:
+  naive:
+    description: "No uncertainty consideration"
+    enabled: true
+    
+  standard_cp:
+    description: "Fixed tau from calibration"
+    enabled: true
+    alpha: 0.1  # 90% coverage guarantee (1 - alpha)
+    calibration_samples: 500
+    tau_default: 0.5  # Default safety margin in meters
+    
+  learnable_cp:
+    description: "Adaptive tau with neural network"
+    enabled: true
+    learning_rate: 0.001
+    epochs: 100
+    batch_size: 32
+    hidden_dims: [64, 32, 16]
+    tau_base: 0.3  # Base safety margin
+    adaptation_factor: 1.2  # Multiplier for adaptive computation
+
+noise:
+  perception_noise_level: 0.15  # 15% perception uncertainty
+  noise_type: "thinning"  # Options: thinning, gaussian, mixed
+  seed: 42  # For reproducibility
+
+evaluation:
+  num_trials: 500  # Number of Monte Carlo trials per test
+  collision_check_resolution: 0.1  # meters
+  save_results: true
+  results_dir: "../results/"

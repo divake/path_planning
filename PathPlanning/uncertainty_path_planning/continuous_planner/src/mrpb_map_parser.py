@@ -365,4 +365,4 @@ if __name__ == "__main__":
     except FileNotFoundError as e:
         print(f"Error: {e}")
         print("Make sure the MRPB dataset is cloned in ../mrpb_dataset/")
-        print("Run: git clone https://github.com/NKU-MobFly-Robotics/local-planning-benchmark.git mrpb_dataset")
+        print("Run: git clone https://github.com/NKU-MobFly-Robotics/local-planning-benchmark.git ../mrpb_dataset")
