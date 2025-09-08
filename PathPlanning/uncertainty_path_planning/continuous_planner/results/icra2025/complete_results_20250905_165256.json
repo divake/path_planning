@@ -1,0 +1,90 @@
+{
+  "passages": {
+    "naive": {
+      "success_rate": 1.0,
+      "collision_rate": 0.0,
+      "paths_found": 50,
+      "avg_path_length": 33.52,
+      "std_path_length": 2.0517309765171454,
+      "ci_lower": 0.9286524008666414,
+      "ci_upper": 1,
+      "successes": 50,
+      "collisions": 0,
+      "num_trials": 50,
+      "computation_time": 0.2542717456817627
+    },
+    "standard": {
+      "success_rate": 1.0,
+      "collision_rate": 0.0,
+      "paths_found": 50,
+      "avg_path_length": 33.78,
+      "std_path_length": 2.128755504984074,
+      "ci_lower": 0.9286524008666414,
+      "ci_upper": 1,
+      "successes": 50,
+      "collisions": 0,
+      "num_trials": 50,
+      "tau": 0.098,
+      "computation_time": 0.8258578777313232
+    },
+    "learnable": {
+      "success_rate": 1.0,
+      "collision_rate": 0.0,
+      "paths_found": 50,
+      "avg_path_length": 34.02,
+      "std_path_length": 2.1306337085477645,
+      "ci_lower": 0.9286524008666414,
+      "ci_upper": 1,
+      "successes": 50,
+      "collisions": 0,
+      "num_trials": 50,
+      "avg_tau": 0.4632543295099738,
+      "std_tau": 0.023528129711623748,
+      "computation_time": 0.4998490810394287
+    }
+  },
+  "zigzag": {
+    "naive": {
+      "success_rate": 1.0,
+      "collision_rate": 0.0,
+      "paths_found": 50,
+      "avg_path_length": 48.02,
+      "std_path_length": 2.774815309169243,
+      "ci_lower": 0.9286524008666414,
+      "ci_upper": 1,
+      "successes": 50,
+      "collisions": 0,
+      "num_trials": 50,
+      "computation_time": 0.8657290935516357
+    },
+    "standard": {
+      "success_rate": 0.86,
+      "collision_rate": 0.0,
+      "paths_found": 43,
+      "avg_path_length": 48.86046511627907,
+      "std_path_length": 2.5752073328030622,
+      "ci_lower": 0.7381380628941446,
+      "ci_upper": 0.9304916657298371,
+      "successes": 43,
+      "collisions": 0,
+      "num_trials": 50,
+      "tau": 0.398,
+      "computation_time": 2.3716976642608643
+    },
+    "learnable": {
+      "success_rate": 0.58,
+      "collision_rate": 0.0,
+      "paths_found": 29,
+      "avg_path_length": 49.275862068965516,
+      "std_path_length": 2.702445274882296,
+      "ci_lower": 0.4423344176857823,
+      "ci_upper": 0.7062499664528802,
+      "successes": 29,
+      "collisions": 0,
+      "num_trials": 50,
+      "avg_tau": 0.5490953577318762,
+      "std_tau": 0.02526024835158065,
+      "computation_time": 3.8485283851623535
+    }
+  }
+}
