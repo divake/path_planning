@@ -13,19 +13,24 @@ planning:
   # Environment-specific overrides
   env_overrides:
     shopping_mall:
-      max_iterations: 20000  # Large space needs more exploration
-      step_size: 1.5  # Larger steps for open space
+      max_iterations: 30000  # Large space - balanced for performance
+      step_size: 1.2  # Larger steps for open space
+      goal_sample_rate: 0.35  # Moderate goal bias
     maze:
-      max_iterations: 20000  # Complex maze needs extensive search
-      step_size: 0.5  # Smaller steps for narrow passages
-      goal_sample_rate: 0.35  # More goal bias
+      max_iterations: 35000  # Complex maze - high but reasonable
+      step_size: 0.3  # Small steps for narrow passages
+      goal_sample_rate: 0.55  # High goal bias
     track:
-      max_iterations: 15000  # U-shaped needs thorough search
-      step_size: 0.4  # Very small steps for narrow track
-      goal_sample_rate: 0.4  # High goal bias for constrained path
+      max_iterations: 20000  # U-shaped track
+      step_size: 0.35  # Small steps for narrow track
+      goal_sample_rate: 0.45  # High goal bias
     narrow_graph:
       step_size: 0.5  # Small steps for acute angles
-      max_iterations: 10000
+      max_iterations: 15000
+    office02:
+      max_iterations: 25000  # Large office
+      step_size: 0.6  # Balanced steps
+      goal_sample_rate: 0.4  # Moderate goal bias
     
   # Robot motion parameters
   motion:

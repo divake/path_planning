@@ -47,7 +47,7 @@ def run_single_test_worker(config, test_case):
         return {'naive': {'success': False, 'error': 'Test config not found'}}
     
     # Parse MRPB map
-    parser = MRPBMapParser(env_name, '../mrpb_dataset')
+    parser = MRPBMapParser(env_name, 'mrpb_dataset')
     
     # Get start and goal
     start = tuple(test_config['start'])
@@ -131,11 +131,11 @@ class MRPBTestRunner:
         Initialize test runner
         """
         # Load configuration files
-        with open('config_env.yaml', 'r') as f:
+        with open('src/config_env.yaml', 'r') as f:
             env_config = yaml.safe_load(f)
-        with open('config_methods.yaml', 'r') as f:
+        with open('src/config_methods.yaml', 'r') as f:
             methods_config = yaml.safe_load(f)
-        with open('config_algorithm.yaml', 'r') as f:
+        with open('src/config_algorithm.yaml', 'r') as f:
             algo_config = yaml.safe_load(f)
         
         # Merge configurations
@@ -202,7 +202,7 @@ class MRPBTestRunner:
         
         # Parse MRPB map
         print(f"Loading map: {env_name}...")
-        parser = MRPBMapParser(env_name, '../mrpb_dataset')
+        parser = MRPBMapParser(env_name, 'mrpb_dataset')
         obstacles = parser.obstacles
         
         # Get start and goal
