@@ -7,18 +7,16 @@ from mrpb_map_parser import MRPBMapParser
 from rrt_star_grid_planner import RRTStarGrid
 import yaml
 
-# List of successful tests
+# List of tests to visualize - focus on problematic ones
 successful_tests = [
-    ('office01add', 1),
-    ('office01add', 2),
-    ('office02', 3),
-    ('room02', 1),
-    ('room02', 3),
-    ('narrow_graph', 2),
+    ('office01add', 3),  # Previously failing
+    ('office02', 1),     # Previously failing
+    ('shopping_mall', 1), # Previously failing
+    ('maze', 1),         # Previously failing
+    ('track', 1),        # Previously failing
+    ('narrow_graph', 1), # Previously failing
+    ('room02', 2),       # Previously failing
 ]
-
-# Add one more for better layout
-successful_tests.append(('office01add', 3))  # This one actually failed but let's try
 
 fig, axes = plt.subplots(3, 3, figsize=(15, 15))
 axes = axes.flatten()
@@ -55,40 +53,12 @@ for idx, (env_name, test_id) in enumerate(successful_tests[:7]):
                      parser.origin[1], parser.origin[1] + parser.height_meters],
               alpha=0.8)
     
-    # Run quick planner with fewer iterations
-    planner = RRTStarGrid(
-        start=start,
-        goal=goal,
-        occupancy_grid=parser.occupancy_grid,
-        origin=parser.origin,
-        resolution=parser.resolution,
-        robot_radius=0.17,
-        step_size=2.0,
-        max_iter=2000,  # Increased
-        goal_threshold=1.0,
-        search_radius=5.0
-        # No seed for better exploration
-    )
+    # Just visualize environment without running planner
+    path = None
     
-    path = planner.plan()
-    
-    if path:
-        path_array = np.array(path)
-        # Plot path
-        ax.plot(path_array[:, 0], path_array[:, 1], 'b-', linewidth=2.5, 
-                alpha=0.8, label='RRT* Path')
-        ax.plot(path_array[:, 0], path_array[:, 1], 'b.', markersize=4)
-        
-        # Calculate path length
-        path_length = sum(np.linalg.norm(np.array(path[i+1]) - np.array(path[i])) 
-                         for i in range(len(path)-1))
-        expected = test_config['distance']
-        
-        title = f'{env_name.upper()} - Test {test_id}\n'
-        title += f'✓ Path: {path_length:.1f}m (Expected: {expected:.1f}m)'
-        title += f'\n{len(path)} waypoints'
-    else:
-        title = f'{env_name.upper()} - Test {test_id}\n✗ No Path Found'
+    expected = test_config['distance']
+    title = f'{env_name.upper()} - Test {test_id}\n'
+    title += f'Expected: {expected:.1f}m'
     
     # Mark start and goal
     ax.plot(start[0], start[1], 'go', markersize=10, label='Start',

@@ -52,6 +52,7 @@ class RRTStarGrid:
         self.max_iter = max_iter
         self.goal_threshold = goal_threshold
         self.search_radius = search_radius
+        self.goal_sample_rate = 0.3  # Default 30% chance to sample goal
         
         # Calculate bounds from grid
         self.height_pixels, self.width_pixels = occupancy_grid.shape
@@ -110,7 +111,11 @@ class RRTStarGrid:
                                p2: Tuple[float, float]) -> bool:
         """Check if path between two points is collision-free"""
         dist = self.distance(p1, p2)
-        steps = int(dist / (self.resolution * 2)) + 1  # Check every 2 pixels
+        # More fine-grained checking
+        steps = int(dist / self.resolution) + 1  # Check every pixel
+        
+        if steps == 0:
+            return self.is_collision_free(p1[0], p1[1])
         
         for i in range(steps + 1):
             t = i / float(steps)
@@ -128,12 +133,12 @@ class RRTStarGrid:
     
     def sample_random(self) -> Tuple[float, float]:
         """Sample random point in free space"""
-        # 10% chance to sample goal
-        if random.random() < 0.1:
+        # Use goal_sample_rate from config
+        if random.random() < self.goal_sample_rate:
             return self.goal
         
         # Sample until we find a collision-free point
-        for _ in range(100):
+        for _ in range(1000):  # Increased attempts
             x = random.uniform(self.x_min + self.robot_radius, 
                              self.x_max - self.robot_radius)
             y = random.uniform(self.y_min + self.robot_radius, 
@@ -142,7 +147,22 @@ class RRTStarGrid:
             if self.is_collision_free(x, y):
                 return (x, y)
         
-        # If we can't find a free point, return goal
+        # If we can't find a free point, try near existing nodes
+        if len(self.nodes) > 1:
+            # Sample near a random existing node
+            random_node = random.choice(self.nodes)
+            for _ in range(100):
+                angle = random.uniform(0, 2 * math.pi)
+                dist = random.uniform(0, self.step_size * 2)
+                x = random_node[0] + dist * math.cos(angle)
+                y = random_node[1] + dist * math.sin(angle)
+                
+                if (self.x_min <= x <= self.x_max and 
+                    self.y_min <= y <= self.y_max and
+                    self.is_collision_free(x, y)):
+                    return (x, y)
+        
+        # Last resort: return goal
         return self.goal
     
     def nearest_node(self, point: Tuple[float, float]) -> int:
@@ -266,7 +286,7 @@ class RRTStarGrid:
                 break
             
             # Progress update
-            if iteration % 500 == 0:
+            if iteration % 1000 == 0 and iteration > 0:
                 print(f"  Iteration {iteration}/{self.max_iter}, nodes: {len(self.nodes)}")
         
         if not goal_reached:

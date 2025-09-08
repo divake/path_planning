@@ -2,13 +2,40 @@
 # Settings for RRT* and other planning algorithms
 
 planning:
-  # RRT* Parameters
+  # RRT* Parameters  
   rrt_star:
-    step_size: 2.0  # meters
-    max_iterations: 1500  # Reduced for faster testing
-    goal_threshold: 1.0  # meters
-    search_radius: 5.0  # meters for rewiring
-    goal_sample_rate: 0.1  # probability of sampling goal
+    step_size: 0.8  # meters - balanced for speed and quality
+    max_iterations: 15000  # Increased for difficult cases  
+    goal_threshold: 0.5  # meters - reasonable accuracy
+    search_radius: 2.5  # meters for rewiring
+    goal_sample_rate: 0.25  # probability of sampling goal - balanced
+    
+  # Environment-specific overrides
+  env_overrides:
+    shopping_mall:
+      max_iterations: 20000  # Large space needs more exploration
+      step_size: 1.5  # Larger steps for open space
+    maze:
+      max_iterations: 20000  # Complex maze needs extensive search
+      step_size: 0.5  # Smaller steps for narrow passages
+      goal_sample_rate: 0.35  # More goal bias
+    track:
+      max_iterations: 15000  # U-shaped needs thorough search
+      step_size: 0.4  # Very small steps for narrow track
+      goal_sample_rate: 0.4  # High goal bias for constrained path
+    narrow_graph:
+      step_size: 0.5  # Small steps for acute angles
+      max_iterations: 10000
+    
+  # Robot motion parameters
+  motion:
+    max_velocity: 0.5  # m/s - robot max speed
+    dt: 0.1  # seconds - time step for simulation
+    
+  # Safety parameters  
+  safety:
+    min_obstacle_distance: 0.3  # meters - minimum safe distance
+    collision_check_resolution: 0.05  # meters - resolution for path collision checking
     
   # Path optimization
   optimization:
