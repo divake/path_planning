@@ -13,13 +13,36 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Tuple
-import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
 from mrpb_map_parser import MRPBMapParser
 from rrt_star_grid_planner import RRTStarGrid
 from mrpb_metrics import MRPBMetrics, NavigationData
+from visualization import MRPBVisualizer
+
+
+def calculate_obstacle_distance_worker(point, occupancy_grid, origin, resolution):
+    """Calculate distance to nearest obstacle for worker function"""
+    px = int((point[0] - origin[0]) / resolution)
+    py = int((point[1] - origin[1]) / resolution)
+    
+    # Search radius in pixels
+    search_radius = 50  # 2.5 meters at 0.05m resolution
+    
+    min_dist = float('inf')
+    for dx in range(-search_radius, search_radius + 1):
+        for dy in range(-search_radius, search_radius + 1):
+            check_x = px + dx
+            check_y = py + dy
+            
+            if (0 <= check_x < occupancy_grid.shape[1] and 
+                0 <= check_y < occupancy_grid.shape[0]):
+                if occupancy_grid[check_y, check_x] > 50:  # Obstacle
+                    dist = np.sqrt(dx**2 + dy**2) * resolution
+                    min_dist = min(min_dist, dist)
+    
+    return min_dist if min_dist < float('inf') else 2.5
 
 
 def run_single_test_worker(config, test_case):
@@ -47,7 +70,7 @@ def run_single_test_worker(config, test_case):
         return {'naive': {'success': False, 'error': 'Test config not found'}}
     
     # Parse MRPB map
-    parser = MRPBMapParser(env_name, 'mrpb_dataset')
+    parser = MRPBMapParser(env_name, '../mrpb_dataset')
     
     # Get start and goal
     start = tuple(test_config['start'])
@@ -90,15 +113,26 @@ def run_single_test_worker(config, test_case):
     if path:
         path_length = planner.compute_path_length(path)
         result['path_length'] = path_length
+        result['num_waypoints'] = len(path)
         
-        # Calculate metrics (simplified for parallel execution)
+        # Calculate metrics properly
         timestamp = 0.0
         dt = 0.1
         
         for i, point in enumerate(path):
-            # Simplified obstacle distance calculation
-            obs_dist = 0.5  # Placeholder
-            v = 0.5 if i > 0 else 0.0
+            # Calculate actual obstacle distance
+            obs_dist = calculate_obstacle_distance_worker(
+                point, parser.occupancy_grid, parser.origin, parser.resolution
+            )
+            
+            # Calculate actual velocity
+            if i > 0:
+                dx = path[i][0] - path[i-1][0]
+                dy = path[i][1] - path[i-1][1]
+                dist = np.sqrt(dx**2 + dy**2)
+                v = dist / dt
+            else:
+                v = 0.0
             
             data = NavigationData(
                 timestamp=timestamp,
@@ -131,11 +165,11 @@ class MRPBTestRunner:
         Initialize test runner
         """
         # Load configuration files
-        with open('src/config_env.yaml', 'r') as f:
+        with open('config_env.yaml', 'r') as f:
             env_config = yaml.safe_load(f)
-        with open('src/config_methods.yaml', 'r') as f:
+        with open('config_methods.yaml', 'r') as f:
             methods_config = yaml.safe_load(f)
-        with open('src/config_algorithm.yaml', 'r') as f:
+        with open('config_algorithm.yaml', 'r') as f:
             algo_config = yaml.safe_load(f)
         
         # Merge configurations
@@ -160,6 +194,9 @@ class MRPBTestRunner:
         # Create results directory
         self.results_dir = self.eval_params.get('results_dir', '../results')
         os.makedirs(self.results_dir, exist_ok=True)
+        
+        # Initialize visualizer
+        self.visualizer = MRPBVisualizer(self.results_dir, '../plots')
         
         # Results storage
         self.all_results = {}
@@ -202,7 +239,7 @@ class MRPBTestRunner:
         
         # Parse MRPB map
         print(f"Loading map: {env_name}...")
-        parser = MRPBMapParser(env_name, 'mrpb_dataset')
+        parser = MRPBMapParser(env_name, '../mrpb_dataset')
         obstacles = parser.obstacles
         
         # Get start and goal
@@ -453,6 +490,11 @@ class MRPBTestRunner:
         
         # Generate summary
         self.print_summary()
+        
+        # Save CSV and generate plots using visualizer
+        self.visualizer.save_results_to_csv(self.all_results, timestamp)
+        self.visualizer.generate_comprehensive_plot(self.all_results, timestamp, self.robot_radius)
+    
     
     def print_summary(self):
         """Print summary of all results"""

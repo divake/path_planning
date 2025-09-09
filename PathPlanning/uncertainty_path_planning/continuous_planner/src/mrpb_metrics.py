@@ -67,18 +67,22 @@ class MRPBMetrics:
         Returns:
             Dictionary with:
             - d_0: Minimum distance to closest obstacle (meters)
+            - d_avg: Average distance to closest obstacle (meters)
             - p_0: Percentage of time spent in dangerous area (%)
         """
         if not self.data_log:
-            return {'d_0': float('inf'), 'p_0': 0.0}
+            return {'d_0': float('inf'), 'd_avg': float('inf'), 'p_0': 0.0}
         
         # Equation (1): Minimum distance to obstacles
         d_0 = min(data.obs_dist for data in self.data_log)
         
+        # New metric: Average distance to obstacles
+        d_avg = sum(data.obs_dist for data in self.data_log) / len(self.data_log)
+        
         # Equation (2): Percentage of time in danger zone
         total_time = self.data_log[-1].timestamp - self.data_log[0].timestamp
         if total_time <= 0:
-            return {'d_0': d_0, 'p_0': 0.0}
+            return {'d_0': d_0, 'd_avg': d_avg, 'p_0': 0.0}
         
         danger_time = 0.0
         start_danger = None
@@ -101,7 +105,7 @@ class MRPBMetrics:
         
         p_0 = (danger_time / total_time) * 100.0
         
-        return {'d_0': d_0, 'p_0': p_0}
+        return {'d_0': d_0, 'd_avg': d_avg, 'p_0': p_0}
     
     def compute_efficiency_metrics(self) -> Dict[str, float]:
         """
