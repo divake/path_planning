@@ -20,6 +20,9 @@ from mrpb_map_parser import MRPBMapParser
 from rrt_star_grid_planner import RRTStarGrid
 from mrpb_metrics import MRPBMetrics, NavigationData
 from visualization import MRPBVisualizer
+import sys
+sys.path.append('../../../CurvesGenerator')
+from quintic_polynomial import QuinticPolynomial
 
 
 def calculate_obstacle_distance_worker(point, occupancy_grid, origin, resolution):
@@ -43,6 +46,92 @@ def calculate_obstacle_distance_worker(point, occupancy_grid, origin, resolution
                     min_dist = min(min_dist, dist)
     
     return min_dist if min_dist < float('inf') else 2.5
+
+
+def generate_realistic_trajectory(waypoints, parser, max_vel=1.5, max_acc=2.0):
+    """
+    Generate realistic robot trajectory from RRT* waypoints using QuinticPolynomial
+    
+    Args:
+        waypoints: List of [x, y] waypoint coordinates
+        parser: MRPBMapParser for obstacle distance calculation
+        max_vel: Maximum robot velocity (m/s)
+        max_acc: Maximum robot acceleration (m/s²)
+    
+    Returns:
+        List of NavigationData with realistic velocities and timing
+    """
+    if len(waypoints) < 2:
+        return []
+    
+    trajectory_data = []
+    current_time = 0.0
+    
+    for i in range(len(waypoints) - 1):
+        # Current and next waypoints
+        x0, y0 = waypoints[i]
+        x1, y1 = waypoints[i + 1]
+        
+        # Calculate segment distance and angle
+        dx = x1 - x0
+        dy = y1 - y0
+        distance = np.sqrt(dx**2 + dy**2)
+        angle = np.arctan2(dy, dx)
+        
+        # Realistic velocity constraints
+        v0 = 0.2 if i == 0 else min(max_vel * 0.8, 1.2)  # Start slower
+        v1 = 0.2 if i == len(waypoints) - 2 else min(max_vel * 0.8, 1.2)  # End slower
+        
+        # Zero initial/final accelerations for smoothness
+        a0 = 0.0
+        a1 = 0.0
+        
+        # Calculate realistic travel time
+        avg_vel = (v0 + v1) / 2
+        T = max(distance / avg_vel, 0.5)  # Minimum 0.5s per segment
+        
+        # Generate quintic polynomial trajectories for x and y
+        traj_x = QuinticPolynomial(x0, v0 * np.cos(angle), a0, x1, v1 * np.cos(angle), a1, T)
+        traj_y = QuinticPolynomial(y0, v0 * np.sin(angle), a0, y1, v1 * np.sin(angle), a1, T)
+        
+        # Sample trajectory at realistic robot control frequency (50Hz = 0.02s)
+        dt = 0.02
+        num_steps = max(int(T / dt), 5)  # At least 5 points per segment
+        
+        for step in range(num_steps):
+            t = step * T / num_steps
+            timestamp = current_time + t
+            
+            # Calculate position from quintic polynomial
+            x = traj_x.calc_xt(t)
+            y = traj_y.calc_xt(t)
+            
+            # Calculate realistic velocity from polynomial derivatives
+            vx = traj_x.calc_dxt(t)
+            vy = traj_y.calc_dxt(t)
+            v = np.sqrt(vx**2 + vy**2)
+            
+            # Calculate obstacle distance
+            obs_dist = calculate_obstacle_distance_worker([x, y], parser.occupancy_grid, 
+                                                        parser.origin, parser.resolution)
+            
+            # Create navigation data point
+            nav_data = NavigationData(
+                timestamp=timestamp,
+                x=x,
+                y=y,
+                theta=np.arctan2(vy, vx),
+                v=v,
+                omega=0.0,  # Simplified for now
+                obs_dist=obs_dist,
+                time_cost=0.01  # Typical computation time per cycle
+            )
+            
+            trajectory_data.append(nav_data)
+        
+        current_time += T
+    
+    return trajectory_data
 
 
 def run_single_test_worker(config, test_case):
@@ -115,37 +204,12 @@ def run_single_test_worker(config, test_case):
         result['path_length'] = path_length
         result['num_waypoints'] = len(path)
         
-        # Calculate metrics properly
-        timestamp = 0.0
-        dt = 0.1
+        # Generate realistic trajectory from RRT* waypoints using QuinticPolynomial
+        trajectory_data = generate_realistic_trajectory(path, parser)
         
-        for i, point in enumerate(path):
-            # Calculate actual obstacle distance
-            obs_dist = calculate_obstacle_distance_worker(
-                point, parser.occupancy_grid, parser.origin, parser.resolution
-            )
-            
-            # Calculate actual velocity
-            if i > 0:
-                dx = path[i][0] - path[i-1][0]
-                dy = path[i][1] - path[i-1][1]
-                dist = np.sqrt(dx**2 + dy**2)
-                v = dist / dt
-            else:
-                v = 0.0
-            
-            data = NavigationData(
-                timestamp=timestamp,
-                x=point[0],
-                y=point[1],
-                theta=0.0,
-                v=v,
-                omega=0.0,
-                obs_dist=obs_dist,
-                time_cost=planning_time / len(path)
-            )
-            metrics.log_data(data)
-            timestamp += dt
+        # Log trajectory data for metrics calculation
+        for nav_data in trajectory_data:
+            metrics.log_data(nav_data)
         
         result['metrics'] = metrics.compute_all_metrics()
         
