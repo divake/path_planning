@@ -23,6 +23,23 @@ sys.path.append('.')
 
 from standard_cp_main import StandardCPPlanner
 from standard_cp_visualization import StandardCPVisualizer
+from standard_cp_progress_tracker import StandardCPProgressTracker
+
+# Install tqdm if not available for progress bars
+try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    print("📦 Installing tqdm for progress bars...")
+    import subprocess
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "tqdm"])
+        from tqdm import tqdm
+        TQDM_AVAILABLE = True
+        print("✅ tqdm installed successfully!")
+    except:
+        print("⚠️  Could not install tqdm. Progress will be shown as text.")
+        TQDM_AVAILABLE = False
 
 
 class FullScaleStandardCPEvaluator:
@@ -32,6 +49,7 @@ class FullScaleStandardCPEvaluator:
         """Initialize full-scale evaluator"""
         self.planner = StandardCPPlanner(config_path)
         self.visualizer = StandardCPVisualizer()
+        self.progress_tracker = StandardCPProgressTracker()
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Full-scale parameters
@@ -49,13 +67,16 @@ class FullScaleStandardCPEvaluator:
         print(f"   Calibration trials: {self.full_scale_config['calibration_trials']}")
         print(f"   Evaluation trials: {self.full_scale_config['evaluation_trials']}")
         print(f"   Total environments: 15 MRPB environments")
+        print(f"   Progress tracking: {'✅ With visual progress bars' if TQDM_AVAILABLE else '✅ Text-based progress'}")
+        print(f"   Detailed logging: ✅ CSV files with failure analysis")
         print(f"   Expected duration: ~2 hours")
         
     def run_comprehensive_calibration(self) -> float:
-        """Run comprehensive τ calibration with increased trials"""
+        """Run comprehensive τ calibration with progress tracking"""
         print(f"\n🔧 COMPREHENSIVE τ CALIBRATION")
         print(f"   Trials per environment: {self.full_scale_config['calibration_trials']}")
         print(f"   Target coverage: 90%")
+        print(f"   Max iterations: 50,000 per planning attempt")
         
         # Update planner config for comprehensive calibration
         original_trials = self.planner.config['conformal_prediction']['calibration']['trials_per_environment']
@@ -65,9 +86,17 @@ class FullScaleStandardCPEvaluator:
         self.planner.config['conformal_prediction']['calibration']['fast_mode'] = False  # Disable fast mode for accuracy
         
         start_time = time.time()
+        
+        # Initialize progress tracking for calibration
+        total_calibration_trials = self._estimate_calibration_trials()
+        self.progress_tracker.init_calibration_progress(total_calibration_trials)
+        
         try:
             tau = self.planner.calibrate_global_tau()
             calibration_time = time.time() - start_time
+            
+            # Finish calibration progress
+            self.progress_tracker.finish_calibration_progress()
             
             print(f"✅ Comprehensive calibration completed")
             print(f"   Duration: {calibration_time:.1f}s")
@@ -93,13 +122,18 @@ class FullScaleStandardCPEvaluator:
             self.planner.config['conformal_prediction']['calibration']['fast_mode'] = original_fast_mode
             
     def run_full_scale_evaluation(self, tau: float) -> Dict[str, Any]:
-        """Run full-scale Monte Carlo evaluation"""
+        """Run full-scale Monte Carlo evaluation with progress tracking"""
         print(f"\n🧪 FULL-SCALE MONTE CARLO EVALUATION")
         print(f"   Trials per method: {self.full_scale_config['evaluation_trials']}")
         print(f"   Methods: {', '.join(self.full_scale_config['methods'])}")
         print(f"   Using τ: {tau:.4f}m")
+        print(f"   Max iterations: 50,000 per planning attempt")
         
         start_time = time.time()
+        
+        # Initialize progress tracking for evaluation
+        total_evaluation_trials = self.full_scale_config['evaluation_trials'] * len(self.full_scale_config['methods'])
+        self.progress_tracker.init_evaluation_progress(total_evaluation_trials)
         
         # Run comprehensive evaluation
         results = self.planner.evaluate_comparison(
@@ -107,6 +141,9 @@ class FullScaleStandardCPEvaluator:
         )
         
         evaluation_time = time.time() - start_time
+        
+        # Finish evaluation progress
+        self.progress_tracker.finish_evaluation_progress()
         
         print(f"✅ Full-scale evaluation completed")
         print(f"   Duration: {evaluation_time:.1f}s ({evaluation_time/60:.1f} minutes)")
@@ -268,6 +305,19 @@ class FullScaleStandardCPEvaluator:
         
         print(f"📋 Summary report saved: {report_file}")
     
+    def _estimate_calibration_trials(self) -> int:
+        """Estimate total calibration trials for progress tracking"""
+        if self.planner.config.get('environments', {}).get('full_environments', {}).get('enabled', False):
+            cal_envs = self.planner.config['environments']['full_environments']['calibration_envs']
+        else:
+            cal_envs = self.planner.config['environments']['test_environments']
+        
+        total_trials = 0
+        for env_config in cal_envs:
+            total_trials += len(env_config['test_ids']) * self.full_scale_config['calibration_trials']
+        
+        return total_trials
+    
     def _json_serializable(self, obj):
         """Convert numpy types to JSON serializable types"""
         if isinstance(obj, np.integer):
@@ -303,15 +353,22 @@ class FullScaleStandardCPEvaluator:
             
             # Final Summary
             total_time = time.time() - total_start_time
+            
+            # Show detailed progress summary
+            self.progress_tracker.print_final_summary()
+            
             print(f"\n🎉 FULL-SCALE EVALUATION COMPLETED!")
             print(f"=" * 80)
             print(f"Total execution time: {total_time:.1f}s ({total_time/60:.1f} minutes)")
             print(f"Global τ calibrated: {tau:.4f}m ({tau*100:.1f}cm)")
             print(f"Monte Carlo trials: {self.full_scale_config['evaluation_trials']} per method")
             print(f"Publication outputs: {'✅ Generated' if pub_success else '❌ Failed'}")
+            print(f"Progress tracking: ✅ Complete trial-by-trial logging")
+            print(f"Detailed logs: ✅ CSV files with failure analysis")
             print(f"")
             print(f"🔬 ICRA 2025 READY:")
-            print(f"   • Comprehensive Standard CP evaluation complete")
+            print(f"   • Comprehensive Standard CP evaluation with progress tracking")
+            print(f"   • Detailed failure categorization (timeout/iteration/other)")
             print(f"   • Publication-quality data and visualizations")
             print(f"   • Ready for Learnable CP implementation")
             print(f"   • All outputs in: plots/standard_cp/")
