@@ -1,0 +1,28 @@
+LEARNABLE CP EVALUATION RESULTS
+==================================================
+
+NAIVE
+------------------------------
+Success Rate: 0.0%
+Collision Rate: 0.0%
+Avg Path Length: 0.00m
+Avg Min Clearance: 0.000m
+Avg Planning Time: 0.026s
+
+STANDARD_CP
+------------------------------
+Success Rate: 0.0%
+Collision Rate: 0.0%
+Avg Path Length: 0.00m
+Avg Min Clearance: 0.000m
+Avg Planning Time: 0.026s
+
+LEARNABLE_CP
+------------------------------
+Success Rate: 0.0%
+Collision Rate: 0.0%
+Avg Path Length: 0.00m
+Avg Min Clearance: 0.000m
+Avg Planning Time: 0.025s
+Avg Tau: 0.000m ± 0.000m
+

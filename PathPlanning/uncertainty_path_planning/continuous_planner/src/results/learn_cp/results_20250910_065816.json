@@ -1,0 +1,818 @@
+{
+  "naive": [
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026797771453857422,
+      "env_name": "office01add",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02490234375,
+      "env_name": "office01add",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02765345573425293,
+      "env_name": "office01add",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.023943424224853516,
+      "env_name": "office01add",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.029480457305908203,
+      "env_name": "office01add",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02776956558227539,
+      "env_name": "office01add",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025411367416381836,
+      "env_name": "office01add",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02514815330505371,
+      "env_name": "office01add",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02701735496520996,
+      "env_name": "office01add",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026828289031982422,
+      "env_name": "office01add",
+      "trial": 9
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.030309438705444336,
+      "env_name": "maze",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02626943588256836,
+      "env_name": "maze",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02476787567138672,
+      "env_name": "maze",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025297164916992188,
+      "env_name": "maze",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02598738670349121,
+      "env_name": "maze",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02585768699645996,
+      "env_name": "maze",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.028161048889160156,
+      "env_name": "maze",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026044845581054688,
+      "env_name": "maze",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026462554931640625,
+      "env_name": "maze",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025328397750854492,
+      "env_name": "maze",
+      "trial": 9
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.030490875244140625,
+      "env_name": "room02",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025305986404418945,
+      "env_name": "room02",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.024802207946777344,
+      "env_name": "room02",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026368141174316406,
+      "env_name": "room02",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02586674690246582,
+      "env_name": "room02",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02515697479248047,
+      "env_name": "room02",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02567768096923828,
+      "env_name": "room02",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.028650283813476562,
+      "env_name": "room02",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02486395835876465,
+      "env_name": "room02",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02705860137939453,
+      "env_name": "room02",
+      "trial": 9
+    }
+  ],
+  "standard_cp": [
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02525472640991211,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02557826042175293,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02441573143005371,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02648329734802246,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.029201507568359375,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02321457862854004,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.023720264434814453,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.023470640182495117,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.024581432342529297,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025506973266601562,
+      "tau": 0.17,
+      "env_name": "office01add",
+      "trial": 9
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025351285934448242,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02478814125061035,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025170087814331055,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02527332305908203,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02780771255493164,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.027724027633666992,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.03410649299621582,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026363372802734375,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.0262143611907959,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026443958282470703,
+      "tau": 0.17,
+      "env_name": "maze",
+      "trial": 9
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02561211585998535,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02480340003967285,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.027225255966186523,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026343345642089844,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.022864103317260742,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026699542999267578,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02447795867919922,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.029575824737548828,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.0260009765625,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.027529239654541016,
+      "tau": 0.17,
+      "env_name": "room02",
+      "trial": 9
+    }
+  ],
+  "learnable_cp": [
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025313377380371094,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.029553890228271484,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026990890502929688,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.024397611618041992,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.023972034454345703,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02365422248840332,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026091337203979492,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.024890422821044922,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02346038818359375,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02501964569091797,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "office01add",
+      "trial": 9
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.024100065231323242,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026576519012451172,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02580094337463379,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025483369827270508,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02705836296081543,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02484130859375,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.028174161911010742,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025017499923706055,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.027341842651367188,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026735305786132812,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "maze",
+      "trial": 9
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025249481201171875,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 0
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02500438690185547,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 1
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.024632692337036133,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 2
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025419950485229492,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 3
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.026682615280151367,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 4
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02395153045654297,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 5
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.0234835147857666,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 6
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.025453567504882812,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 7
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02521681785583496,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 8
+    },
+    {
+      "success": false,
+      "collision": false,
+      "path": null,
+      "planning_time": 0.02416086196899414,
+      "tau_values": [],
+      "adaptations": 0,
+      "env_name": "room02",
+      "trial": 9
+    }
+  ]
+}

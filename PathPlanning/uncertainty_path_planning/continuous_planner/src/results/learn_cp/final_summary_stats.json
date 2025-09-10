@@ -1,0 +1,37 @@
+{
+  "method_averages": {
+    "naive": {
+      "Success": 100.0,
+      "Path Length": 26.961961986772867,
+      "Planning Time": 29.532378398455105
+    },
+    "standard_cp": {
+      "Success": 86.92307692307693,
+      "Collision": 0.0,
+      "Path Length": 30.161609903713067
+    },
+    "learnable_cp": {
+      "Success": 100.0,
+      "Collision": 2.8177667226927023,
+      "Path Length": 29.433708477271356,
+      "Planning Time": 29.367925404952057,
+      "Avg Tau": 0.1780330573757832,
+      "Clearance": 0.6828514175153146
+    }
+  },
+  "improvements": {
+    "vs_naive": {
+      "path_overhead": 9.167531990851003,
+      "time_overhead": -0.5568565839304379,
+      "collision_added": 2.8177667226927023
+    },
+    "vs_standard_cp": {
+      "success_improvement": 13.076923076923066,
+      "path_reduction": -2.413337447057501,
+      "adaptive_tau_range": [
+        0.1379872262016239,
+        0.2364508982420637
+      ]
+    }
+  }
+}

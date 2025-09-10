@@ -1,0 +1,61 @@
+# Learnable CP Configuration
+# Adaptive safety margin learning for path planning
+
+learn_cp:
+  # Model architecture
+  hidden_dims: [64, 32, 16]  # Smaller network for faster experimentation
+  dropout: 0.2
+  tau_min: 0.05  # Minimum safety margin (meters)
+  tau_max: 0.35  # Maximum safety margin (meters)
+  l2_lambda: 0.0001
+  
+  # Feature configuration
+  num_features: 15  # Number of spatial features
+  
+training:
+  epochs: 5  # Quick test with very few epochs
+  batch_size: 32
+  checkpoint_interval: 10
+  
+  # Loss weights (key hyperparameters)
+  loss_weights:
+    coverage: 1.0    # Safety guarantee weight
+    efficiency: 0.5  # Efficiency weight
+    smoothness: 0.1  # Smoothness along path
+    margin: 0.2      # Discrimination between safe/unsafe
+
+optimizer:
+  type: "AdamW"
+  lr: 0.001
+  weight_decay: 0.01
+  
+  scheduler:
+    type: "cosine"
+    T_max: 50
+
+# Test environments (start with 3 diverse environments)
+test_environments:
+  - office01add  # Easy environment
+  - maze         # Hard environment  
+  - room02       # Medium environment
+
+# Evaluation settings
+evaluation:
+  num_trials: 10  # Reduced trials for quick testing
+  noise_level: 0.15  # Perception noise level
+  base_planner: "rrt_star"  # Can be changed to "a_star", "prm", etc.
+  
+# Comparison baselines
+baselines:
+  - naive         # No uncertainty handling
+  - standard_cp   # Fixed tau = 0.17m
+  - oracle        # Perfect per-environment tau
+
+# Results directory
+results_dir: "results/learn_cp"
+
+# Debug settings  
+debug:
+  log_level: "INFO"
+  visualize_features: false
+  save_intermediate: true
