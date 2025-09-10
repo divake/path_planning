@@ -71,7 +71,7 @@ robot:
 # ================================================================================
 planning:
   rrt_star:
-    max_iterations: 1000
+    max_iterations: 50000    # Increased for complex environments 
     step_size: 0.5
     goal_sample_rate: 0.1
     search_radius: 2.0
@@ -144,7 +144,7 @@ conformal_prediction:
 planning:
   # RRT* parameters (reuse existing settings)
   rrt_star:
-    max_iterations: 1000
+    max_iterations: 50000    # Increased for complex environments (some need 50,000+ iterations)
     step_size: 0.5
     goal_sample_rate: 0.1
     search_radius: 2.0
