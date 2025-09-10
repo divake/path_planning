@@ -135,8 +135,8 @@ conformal_prediction:
   nonconformity:
     method: "clearance_error"    # Options: "clearance_error", "collision_depth", "hausdorff"
     description: "Maximum perception underestimation of safety clearance"
-    penalty_collision: 0.1       # 10cm penalty for actual collisions
-    penalty_planning_failure: 1.0 # 1m penalty for planning failures
+    penalty_collision: 0.2       # 20cm penalty for actual collisions  
+    penalty_planning_failure: 0.3 # 30cm penalty for planning failures (reduced from 1m)
 
 # ================================================================================
 # PLANNING CONFIGURATION

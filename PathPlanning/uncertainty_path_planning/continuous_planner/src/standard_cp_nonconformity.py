@@ -128,8 +128,9 @@ class StandardCPNonconformity:
             true_safety_margin = true_clearance - robot_radius
             perceived_safety_margin = perceived_clearance - robot_radius
             
-            # Perception underestimation = how much we thought we were safer than reality
-            underestimation = max(0, perceived_safety_margin - true_safety_margin)
+            # Perception underestimation = how much perception underestimated danger
+            # If true_safety_margin < perceived_safety_margin, we thought we were safer than reality
+            underestimation = max(0, true_safety_margin - perceived_safety_margin)
             
             # Special penalty for actual collisions
             if true_safety_margin < 0:  # Robot actually collides in true environment
