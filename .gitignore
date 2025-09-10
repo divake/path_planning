@@ -9,3 +9,4 @@ icra_paper_materials
 PathPlanning/uncertainty_path_planning/continuous_planner/debug_results/*
 PathPlanning/uncertainty_path_planning/continuous_planner/plots/*
 PathPlanning/uncertainty_path_planning/continuous_planner/results/*
+PathPlanning/uncertainty_path_planning/continuous_planner/src/plots/standard_cp/*

@@ -1,0 +1,268 @@
+# Standard CP Configuration File
+# IMPORTANT: This file imports shared configuration from config_env.yaml
+# Only Standard CP-specific parameters are defined here
+
+# ================================================================================
+# CONFIGURATION IMPORTS
+# ================================================================================
+# Import base configuration from existing files
+base_config_file: "config_env.yaml"  # Import robot, environments, etc.
+
+# ================================================================================
+# EXPERIMENT CONFIGURATION (Standard CP specific)
+# ================================================================================
+experiment:
+  name: "standard_cp_mrpb_evaluation"
+  version: "1.0"
+  description: "Standard Conformal Prediction on MRPB environments"
+  
+# ================================================================================
+# ENVIRONMENT SELECTION (Standard CP specific)
+# ================================================================================
+environments:
+  # For initial testing - start with 1-2 environments
+  test_environments:
+    - name: "office01add"
+      test_ids: [1, 2, 3]
+      difficulty: "easy"
+      reason: "Simple environment for initial validation"
+    
+    - name: "narrow_graph" 
+      test_ids: [1, 2, 3]
+      difficulty: "hard" 
+      reason: "Challenging environment to test robustness"
+  
+  # Full set for final evaluation - ALL 15 MRPB test scenarios
+  full_environments:
+    enabled: true  # Enable for full-scale evaluation
+    
+    # CALIBRATION SET (10 tests) - Balanced difficulty distribution
+    calibration_envs:  
+      # Easy environments (4 tests)
+      - {name: "office01add", test_ids: [1, 2], difficulty: "easy"}      # 2 tests
+      - {name: "shopping_mall", test_ids: [1, 2], difficulty: "easy"}    # 2 tests
+      # Medium environments (4 tests)  
+      - {name: "office02", test_ids: [1, 3], difficulty: "medium"}       # 2 tests (test 2 disabled)
+      - {name: "room02", test_ids: [1, 2], difficulty: "medium"}         # 2 tests
+      # Hard environments (2 tests)
+      - {name: "maze", test_ids: [3], difficulty: "hard"}               # 1 test (tests 1,2 disabled)
+      - {name: "narrow_graph", test_ids: [1], difficulty: "hard"}        # 1 test
+    
+    # VALIDATION SET (5 tests) - Slightly easier distribution for robust evaluation
+    validation_envs:  
+      # Easy environments (2 tests) - 40% of validation
+      - {name: "office01add", test_ids: [3], difficulty: "easy"}         # 1 test
+      - {name: "shopping_mall", test_ids: [3], difficulty: "easy"}       # 1 test
+      # Medium environments (1 test) - 20% of validation
+      - {name: "room02", test_ids: [3], difficulty: "medium"}            # 1 test
+      # Hard environments (2 tests) - 40% of validation  
+      - {name: "narrow_graph", test_ids: [2, 3], difficulty: "hard"}     # 2 tests
+
+# ================================================================================
+# ROBOT CONFIGURATION (temporary - will be imported from config_env.yaml)
+# ================================================================================
+robot:
+  radius: 0.17          # meters (MRPB specification)
+  max_speed: 1.5        # m/s 
+  max_acceleration: 2.0 # m/s²
+
+# ================================================================================
+# PLANNING CONFIGURATION (temporary - will be imported/merged)
+# ================================================================================
+planning:
+  rrt_star:
+    max_iterations: 1000
+    step_size: 0.5
+    goal_sample_rate: 0.1
+    search_radius: 2.0
+  
+  smoothing:
+    enabled: true
+    max_velocity: 1.5      # m/s
+    max_acceleration: 2.0  # m/s²
+    time_step: 0.1        # seconds
+  
+  timeout:
+    planning_timeout: 30.0    # 30 seconds max planning time
+    total_timeout: 60.0       # 60 seconds total timeout
+
+# ================================================================================
+# PERCEPTION NOISE MODEL
+# ================================================================================
+noise_model:
+  # Realistic sensor noise parameters
+  lidar:
+    measurement_std: 0.05      # 5cm standard deviation
+    false_negative_rate: 0.02  # 2% missing obstacles
+    max_range: 10.0           # 10m maximum range
+    min_range: 0.3            # 30cm minimum range
+  
+  camera:
+    depth_std: 0.1            # 10cm depth estimation error
+    failure_rate: 0.05        # 5% complete failures
+  
+  localization:
+    position_std: 0.03        # 3cm position uncertainty
+    orientation_std: 0.05     # 3 degrees orientation uncertainty
+  
+  # Noise application settings
+  noise_types:
+    - "measurement_noise"     # Gaussian noise on measurements
+    - "false_negatives"       # Missing obstacles
+    - "localization_drift"    # Position uncertainty
+  
+  # For testing different noise levels
+  noise_levels: [0.05, 0.10, 0.15, 0.20]  # 5%, 10%, 15%, 20%
+
+# ================================================================================
+# CONFORMAL PREDICTION CONFIGURATION
+# ================================================================================
+conformal_prediction:
+  # Coverage and calibration
+  target_coverage: 0.90        # 90% safety guarantee
+  confidence_level: 0.90       # Same as target_coverage
+  
+  # Calibration parameters
+  calibration:
+    trials_per_environment: 5    # Small for fast testing
+    trials_per_environment_full: 100  # Full calibration trials
+    total_trials_test: 20        # Small total for testing phase
+    total_trials_full: 1000      # Full trials for final evaluation
+    random_seed_base: 42         # Base seed for reproducibility
+    fast_mode: true              # Enable optimizations for testing
+  
+  # Nonconformity score configuration
+  nonconformity:
+    method: "clearance_error"    # Options: "clearance_error", "collision_depth", "hausdorff"
+    description: "Maximum perception underestimation of safety clearance"
+    penalty_collision: 0.1       # 10cm penalty for actual collisions
+    penalty_planning_failure: 1.0 # 1m penalty for planning failures
+
+# ================================================================================
+# PLANNING CONFIGURATION
+# ================================================================================
+planning:
+  # RRT* parameters (reuse existing settings)
+  rrt_star:
+    max_iterations: 1000
+    step_size: 0.5
+    goal_sample_rate: 0.1
+    search_radius: 2.0
+  
+  # Path smoothing (reuse existing QuinticPolynomial)
+  smoothing:
+    enabled: true
+    max_velocity: 1.5      # m/s
+    max_acceleration: 2.0  # m/s²
+    time_step: 0.1        # seconds
+  
+  # Timeout settings
+  timeout:
+    planning_timeout: 120.0   # 120 seconds - allows for slowest environments (shopping_mall: 108s)
+    total_timeout: 150.0      # 150 seconds total timeout with safety margin
+
+# ================================================================================
+# EVALUATION CONFIGURATION  
+# ================================================================================
+evaluation:
+  # Metrics to compute (reuse existing MRPB metrics)
+  metrics:
+    - "d_0"           # Minimum obstacle distance
+    - "d_avg"         # Average obstacle distance  
+    - "path_length"   # Total path length
+    - "planning_time" # Time to plan
+    - "f_vs"          # Velocity smoothness
+    - "f_ps"          # Path smoothness
+    - "success_rate"  # Planning success rate
+    - "collision_rate" # Collision rate on true environment
+  
+  # Comparison methods
+  methods:
+    - name: "naive"
+      description: "Baseline RRT* without safety margins"
+      enabled: true
+    
+    - name: "standard_cp"
+      description: "Standard CP with global tau"
+      enabled: true
+    
+    - name: "learnable_cp"  # For future implementation
+      description: "Learnable CP with adaptive margins"
+      enabled: false
+  
+  # Statistical analysis
+  statistics:
+    confidence_interval: 0.95   # 95% confidence intervals
+    bootstrap_samples: 1000     # For bootstrap statistics
+    significance_level: 0.05    # For hypothesis testing
+
+# ================================================================================
+# OUTPUT CONFIGURATION (Standard CP specific)
+# ================================================================================
+output:
+  # Directory structure - organized under plots/standard_cp/
+  base_dir: "plots/standard_cp"
+  subdirs:
+    results: "results"      # CSV files and numerical data
+    plots: "plots"          # PNG/PDF visualization files 
+    data: "data"           # JSON files and raw data
+    logs: "logs"           # Log files
+    calibration: "calibration"  # Calibration-specific outputs
+    evaluation: "evaluation"    # Evaluation-specific outputs
+  
+  # File naming
+  timestamp_format: "%Y%m%d_%H%M%S"
+  
+  # What to save
+  save_options:
+    calibration_data: true      # Save calibration scores and tau
+    individual_trials: true     # Save each trial result
+    aggregated_results: true    # Save summary statistics
+    plots: true                # Save visualization plots
+    config: true               # Save copy of this config
+    
+  # Visualization settings (reuse existing visualization.py)
+  visualization:
+    save_format: "png"
+    dpi: 300
+    figure_size: [12, 8]
+    color_scheme:
+      naive: "blue"
+      standard_cp: "green" 
+      learnable_cp: "orange"
+
+# ================================================================================
+# DEBUGGING AND LOGGING
+# ================================================================================
+debug:
+  # Logging levels
+  log_level: "INFO"        # DEBUG, INFO, WARNING, ERROR
+  log_to_file: true
+  log_to_console: true
+  
+  # Debug options
+  save_intermediate_results: true   # Save results after each environment
+  plot_individual_paths: false     # Plot each planned path (expensive)
+  validate_each_step: true         # Validate results at each step
+  
+  # Performance monitoring
+  profile_performance: true        # Monitor timing and memory
+  max_memory_usage: "4GB"         # Alert if memory usage exceeds this
+
+# ================================================================================
+# SAFETY AND VALIDATION
+# ================================================================================
+safety:
+  # Validation checks
+  validate_coverage: true          # Empirically validate coverage guarantee
+  validate_tau_reasonable: true    # Check tau is in reasonable range [0.01, 1.0]
+  validate_paths: true            # Check all paths for basic sanity
+  
+  # Safety bounds
+  tau_bounds:
+    min_tau: 0.01     # Minimum 1cm safety margin
+    max_tau: 1.0      # Maximum 1m safety margin
+    
+  # Failure handling
+  max_planning_failures: 0.1    # Allow up to 10% planning failures
+  max_collision_rate: 0.15      # Alert if collision rate > 15%
