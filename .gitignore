@@ -16,3 +16,5 @@ PathPlanning/uncertainty_path_planning/continuous_planner/src/plots/standard_cp/
 *.txt
 /mnt/ssd1/divake/path_planning/PathPlanning/uncertainty_path_planning/continuous_planner/mrpb_dataset
 Visual_odometry.jpg
+.claude
+.idea
