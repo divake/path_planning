@@ -19,6 +19,47 @@ import time
 from dataclasses import dataclass
 
 
+def calculate_obstacle_distance(point: Tuple[float, float], 
+                               occupancy_grid: np.ndarray,
+                               origin: Tuple[float, float], 
+                               resolution: float) -> float:
+    """
+    Calculate distance from a point to the nearest obstacle
+    
+    Args:
+        point: (x, y) position in world coordinates
+        occupancy_grid: 2D numpy array with obstacle information
+        origin: Map origin (x, y) in world coordinates
+        resolution: Map resolution in meters per pixel
+        
+    Returns:
+        Distance to nearest obstacle in meters
+    """
+    # Convert world coordinates to grid indices
+    px = int((point[0] - origin[0]) / resolution)
+    py = int((point[1] - origin[1]) / resolution)
+    
+    # Search radius in pixels (2.5 meters at 0.05m resolution = 50 pixels)
+    search_radius = int(2.5 / resolution)
+    
+    min_dist = float('inf')
+    for dx in range(-search_radius, search_radius + 1):
+        for dy in range(-search_radius, search_radius + 1):
+            check_x = px + dx
+            check_y = py + dy
+            
+            # Check bounds
+            if (0 <= check_x < occupancy_grid.shape[1] and 
+                0 <= check_y < occupancy_grid.shape[0]):
+                # Check if obstacle (value > 50 means occupied)
+                if occupancy_grid[check_y, check_x] > 50:
+                    dist = np.sqrt(dx**2 + dy**2) * resolution
+                    min_dist = min(min_dist, dist)
+    
+    # Return min distance or max search radius if no obstacle found
+    return min_dist if min_dist < float('inf') else 2.5
+
+
 @dataclass
 class NavigationData:
     """
