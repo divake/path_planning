@@ -83,6 +83,12 @@ class NoiseModel:
                 noisy_grid = self._add_false_negatives(noisy_grid, noise_level)
             elif noise_type == "localization_drift":
                 noisy_grid = self._add_localization_drift(noisy_grid, noise_level)
+            elif noise_type == "transparency_noise":
+                noisy_grid = self._add_transparency_noise(noisy_grid, noise_level)
+            elif noise_type == "reflectance_noise":
+                noisy_grid = self._add_reflectance_noise(noisy_grid, noise_level)
+            elif noise_type == "occlusion_noise":
+                noisy_grid = self._add_occlusion_noise(noisy_grid, noise_level)
         
         # Validate result
         self._validate_noisy_grid(occupancy_grid, noisy_grid)
@@ -93,9 +99,7 @@ class NoiseModel:
         """
         Add LiDAR/camera measurement noise
         
-        Simulates:
-        - Gaussian noise on obstacle boundaries
-        - Random erosion/dilation of obstacles
+        Simulates obstacles appearing at wrong distances by shifting boundaries
         """
         lidar_config = self.noise_config['lidar']
         camera_config = self.noise_config['camera']
@@ -106,26 +110,29 @@ class NoiseModel:
         # Scale noise by grid resolution (0.05m per pixel)
         noise_std_pixels = (lidar_config['measurement_std'] * noise_level) / 0.05
         
-        # Find obstacle boundaries for targeted noise
-        obstacle_boundaries = self._find_obstacle_boundaries(grid)
+        # Apply morphological operations to shift obstacle boundaries
+        from scipy import ndimage
         
-        for (i, j) in obstacle_boundaries:
-            # Gaussian noise on boundary pixels
-            noise_magnitude = abs(np.random.normal(0, noise_std_pixels))
-            
-            if noise_magnitude > 0.5:  # Significant noise
-                # Randomly erode or dilate
-                if np.random.random() < 0.5:
-                    # Erode: remove obstacle pixel (make free)
-                    noisy_grid[i, j] = 0
-                else:
-                    # Dilate: add obstacle pixels in neighborhood
-                    for di in [-1, 0, 1]:
-                        for dj in [-1, 0, 1]:
-                            ni, nj = i + di, j + dj
-                            if 0 <= ni < height and 0 <= nj < width:
-                                if np.random.random() < noise_level:
-                                    noisy_grid[ni, nj] = 100  # MRPB occupied value
+        # Create structuring element for morphological ops
+        struct_size = max(3, int(noise_std_pixels * 2) | 1)  # Ensure odd size
+        structure = ndimage.generate_binary_structure(2, 2)
+        
+        # Extract obstacle mask as boolean
+        obstacle_mask = (grid == 100)
+        
+        # Random erosion to make obstacles appear farther (70% of the time)
+        if np.random.random() < 0.7:
+            # Erode obstacles - they appear smaller/farther
+            erosion_iterations = max(1, int(noise_std_pixels))
+            eroded_mask = ndimage.binary_erosion(obstacle_mask, structure, iterations=erosion_iterations)
+            # Clear eroded pixels (obstacles that disappeared)
+            noisy_grid[obstacle_mask & ~eroded_mask] = 0
+        else:
+            # Dilate obstacles - they appear closer (30% of the time)
+            dilation_iterations = max(1, int(noise_std_pixels * 0.5))
+            dilated_mask = ndimage.binary_dilation(obstacle_mask, structure, iterations=dilation_iterations)
+            # Add dilated pixels (new obstacle areas)
+            noisy_grid[dilated_mask & ~obstacle_mask] = 100
         
         # Camera depth estimation errors (additional false negatives)
         if np.random.random() < camera_config['failure_rate'] * noise_level:
@@ -322,6 +329,213 @@ class NoiseModel:
                          f"{false_negatives} false negatives, {false_positives} false positives")
         
         return analysis
+    
+    def _add_transparency_noise(self, grid: np.ndarray, noise_level: float) -> np.ndarray:
+        """
+        Add transparency noise - simulates glass/transparent obstacles that LiDAR passes through
+        
+        Makes random sections of obstacles transparent (appear as free space)
+        This creates underestimation of danger as robot thinks it can pass through
+        """
+        noisy_grid = grid.copy()
+        height, width = grid.shape
+        
+        # Find all obstacle pixels
+        obstacle_pixels = np.where(grid == 100)
+        num_obstacles = len(obstacle_pixels[0])
+        
+        if num_obstacles > 0:
+            # Make 15-30% of obstacle pixels transparent based on noise level
+            transparency_rate = 0.15 + (0.15 * noise_level)
+            
+            # Select contiguous regions to make transparent (more realistic than random pixels)
+            from scipy import ndimage
+            
+            # Label connected components
+            labeled, num_features = ndimage.label(grid == 100)
+            
+            # For each obstacle component, potentially make parts transparent
+            for label_id in range(1, num_features + 1):
+                if np.random.random() < transparency_rate:
+                    # Make this entire small obstacle transparent
+                    component_mask = (labeled == label_id)
+                    component_size = np.sum(component_mask)
+                    
+                    if component_size < 50:  # Small obstacles become fully transparent
+                        noisy_grid[component_mask] = 0
+                    else:
+                        # For larger obstacles, create transparent windows/sections
+                        component_coords = np.where(component_mask)
+                        num_coords = len(component_coords[0])
+                        
+                        # Create transparent patches
+                        num_patches = max(1, int(num_coords * transparency_rate))
+                        for _ in range(num_patches):
+                            # Pick random center point
+                            idx = np.random.randint(num_coords)
+                            cy, cx = component_coords[0][idx], component_coords[1][idx]
+                            
+                            # Create transparent patch around this point
+                            patch_size = np.random.randint(2, 5)
+                            y_min = max(0, cy - patch_size)
+                            y_max = min(height, cy + patch_size + 1)
+                            x_min = max(0, cx - patch_size)
+                            x_max = min(width, cx + patch_size + 1)
+                            
+                            # Make patch transparent
+                            noisy_grid[y_min:y_max, x_min:x_max] = 0
+        
+        self.logger.debug(f"Applied transparency noise with rate {transparency_rate:.2f}")
+        return noisy_grid
+    
+    def _add_reflectance_noise(self, grid: np.ndarray, noise_level: float) -> np.ndarray:
+        """
+        Add reflectance noise - simulates black/absorptive surfaces and mirror reflections
+        
+        Black surfaces: LiDAR gets weak/no returns, appears as free space
+        Mirrors: Create shifted/displaced obstacles due to indirect reflections
+        """
+        noisy_grid = grid.copy()
+        height, width = grid.shape
+        
+        # Find obstacle boundaries
+        boundaries = self._find_obstacle_boundaries(grid)
+        
+        if boundaries:
+            # Black surface absorption (40% of boundaries)
+            black_surface_rate = 0.4 * noise_level
+            
+            for (i, j) in boundaries:
+                if np.random.random() < black_surface_rate:
+                    # Black surface - remove obstacle pixels in a gradient
+                    # Stronger absorption at edges, weaker towards center
+                    absorption_radius = np.random.randint(1, 4)
+                    for di in range(-absorption_radius, absorption_radius + 1):
+                        for dj in range(-absorption_radius, absorption_radius + 1):
+                            ni, nj = i + di, j + dj
+                            if 0 <= ni < height and 0 <= nj < width:
+                                # Absorption probability decreases with distance
+                                dist = max(abs(di), abs(dj))
+                                absorption_prob = (1.0 - dist / (absorption_radius + 1)) * noise_level
+                                if np.random.random() < absorption_prob:
+                                    noisy_grid[ni, nj] = 0
+            
+            # Mirror reflections (20% of boundaries) - shift obstacle positions
+            mirror_rate = 0.2 * noise_level
+            
+            # Create shifted obstacles from mirrors
+            from scipy import ndimage
+            obstacle_mask = (grid == 100)
+            
+            if np.random.random() < mirror_rate:
+                # Random shift direction and magnitude
+                shift_y = np.random.randint(-3, 4) * noise_level
+                shift_x = np.random.randint(-3, 4) * noise_level
+                
+                # Shift some obstacles to simulate mirror reflections
+                shifted_mask = ndimage.shift(obstacle_mask.astype(float), 
+                                            [shift_y, shift_x], 
+                                            order=0, mode='constant', cval=0)
+                
+                # Combine: remove some original, add shifted versions
+                # This simulates seeing obstacle at wrong position due to reflection
+                erosion_mask = np.random.random(grid.shape) < 0.3 * noise_level
+                noisy_grid[obstacle_mask & erosion_mask] = 0  # Remove some original
+                noisy_grid[shifted_mask.astype(bool) & (grid == 0)] = 100  # Add shifted
+        
+        self.logger.debug(f"Applied reflectance noise (black surfaces + mirrors)")
+        return noisy_grid
+    
+    def _add_occlusion_noise(self, grid: np.ndarray, noise_level: float) -> np.ndarray:
+        """
+        Add occlusion noise - simulates partial visibility of obstacles
+        
+        Only parts of obstacles are visible, underestimating their true size
+        This is different from false negatives which remove entire obstacles
+        """
+        noisy_grid = grid.copy()
+        height, width = grid.shape
+        
+        from scipy import ndimage
+        
+        # Label connected components (individual obstacles)
+        labeled, num_features = ndimage.label(grid == 100)
+        
+        for label_id in range(1, num_features + 1):
+            component_mask = (labeled == label_id)
+            
+            # Apply occlusion with probability based on noise level
+            if np.random.random() < 0.5 + (0.3 * noise_level):
+                # Determine occlusion type
+                occlusion_type = np.random.choice(['edge', 'corner', 'partial'])
+                
+                if occlusion_type == 'edge':
+                    # Remove one edge of the obstacle (simulate viewing from side)
+                    coords = np.where(component_mask)
+                    if len(coords[0]) > 0:
+                        # Find bounding box
+                        y_min, y_max = coords[0].min(), coords[0].max()
+                        x_min, x_max = coords[1].min(), coords[1].max()
+                        
+                        # Choose which edge to occlude
+                        edge = np.random.choice(['top', 'bottom', 'left', 'right'])
+                        occlusion_depth = max(1, int((y_max - y_min) * 0.3 * noise_level))
+                        
+                        if edge == 'top':
+                            noisy_grid[y_min:y_min + occlusion_depth, x_min:x_max + 1] = 0
+                        elif edge == 'bottom':
+                            noisy_grid[y_max - occlusion_depth + 1:y_max + 1, x_min:x_max + 1] = 0
+                        elif edge == 'left':
+                            occlusion_depth = max(1, int((x_max - x_min) * 0.3 * noise_level))
+                            noisy_grid[y_min:y_max + 1, x_min:x_min + occlusion_depth] = 0
+                        else:  # right
+                            occlusion_depth = max(1, int((x_max - x_min) * 0.3 * noise_level))
+                            noisy_grid[y_min:y_max + 1, x_max - occlusion_depth + 1:x_max + 1] = 0
+                
+                elif occlusion_type == 'corner':
+                    # Remove a corner section (simulate partial view)
+                    coords = np.where(component_mask)
+                    if len(coords[0]) > 0:
+                        y_min, y_max = coords[0].min(), coords[0].max()
+                        x_min, x_max = coords[1].min(), coords[1].max()
+                        
+                        corner = np.random.choice(['tl', 'tr', 'bl', 'br'])
+                        occlusion_size = max(2, int(min(y_max - y_min, x_max - x_min) * 0.4 * noise_level))
+                        
+                        if corner == 'tl':
+                            noisy_grid[y_min:y_min + occlusion_size, x_min:x_min + occlusion_size] = 0
+                        elif corner == 'tr':
+                            noisy_grid[y_min:y_min + occlusion_size, x_max - occlusion_size + 1:x_max + 1] = 0
+                        elif corner == 'bl':
+                            noisy_grid[y_max - occlusion_size + 1:y_max + 1, x_min:x_min + occlusion_size] = 0
+                        else:  # br
+                            noisy_grid[y_max - occlusion_size + 1:y_max + 1, x_max - occlusion_size + 1:x_max + 1] = 0
+                
+                else:  # partial
+                    # Random patches occluded (simulate complex occlusion)
+                    component_coords = np.where(component_mask)
+                    num_pixels = len(component_coords[0])
+                    
+                    if num_pixels > 0:
+                        # Remove 20-40% of the obstacle
+                        occlusion_ratio = 0.2 + (0.2 * noise_level)
+                        num_occluded = int(num_pixels * occlusion_ratio)
+                        
+                        # Select pixels to occlude (in clusters for realism)
+                        occluded_indices = np.random.choice(num_pixels, size=min(num_occluded, num_pixels), replace=False)
+                        
+                        for idx in occluded_indices:
+                            y, x = component_coords[0][idx], component_coords[1][idx]
+                            # Occlude small region around selected pixel
+                            for dy in range(-1, 2):
+                                for dx in range(-1, 2):
+                                    ny, nx = y + dy, x + dx
+                                    if 0 <= ny < height and 0 <= nx < width:
+                                        if np.random.random() < 0.7:  # Probabilistic for softer edges
+                                            noisy_grid[ny, nx] = 0
+        
+        self.logger.debug(f"Applied occlusion noise to partially hide obstacles")
+        return noisy_grid
 
 
 def test_noise_model():

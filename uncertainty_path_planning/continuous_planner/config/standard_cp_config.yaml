@@ -92,8 +92,8 @@ planning:
 noise_model:
   # Realistic sensor noise parameters
   lidar:
-    measurement_std: 0.05      # 5cm standard deviation
-    false_negative_rate: 0.10  # Increased to 10% for more effect (was 2%)
+    measurement_std: 0.15      # Increased to 15cm for clearer ablation results
+    false_negative_rate: 0.25  # Increased to 25% for substantial impact
     max_range: 10.0           # 10m maximum range
     min_range: 0.3            # 30cm minimum range
   
