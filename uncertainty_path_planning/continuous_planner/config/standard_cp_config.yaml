@@ -93,7 +93,7 @@ noise_model:
   # Realistic sensor noise parameters
   lidar:
     measurement_std: 0.05      # 5cm standard deviation
-    false_negative_rate: 0.02  # 2% missing obstacles
+    false_negative_rate: 0.10  # Increased to 10% for more effect (was 2%)
     max_range: 10.0           # 10m maximum range
     min_range: 0.3            # 30cm minimum range
   
@@ -102,8 +102,8 @@ noise_model:
     failure_rate: 0.05        # 5% complete failures
   
   localization:
-    position_std: 0.03        # 3cm position uncertainty
-    orientation_std: 0.05     # 3 degrees orientation uncertainty
+    position_std: 0.50        # Increased to 50cm for consistent effect
+    orientation_std: 0.20     # Increased orientation uncertainty
   
   # Noise application settings
   noise_types:
@@ -112,7 +112,7 @@ noise_model:
     - "localization_drift"    # Position uncertainty
   
   # For testing different noise levels
-  noise_levels: [0.05, 0.10, 0.15, 0.20]  # 5%, 10%, 15%, 20%
+  noise_levels: [0.15, 0.20, 0.25, 0.30]  # Increased to 15%, 20%, 25%, 30% for meaningful tau
 
 # ================================================================================
 # CONFORMAL PREDICTION CONFIGURATION
