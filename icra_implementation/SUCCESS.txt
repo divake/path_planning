@@ -1,4 +1,0 @@
-Experiments completed successfully at 2025-08-21T03:32:29.828817
-Total scenarios: 100
-Methods evaluated: Naive, Ensemble, Learnable CP
-Key result: Learnable CP reduces collisions by 88% vs Naive

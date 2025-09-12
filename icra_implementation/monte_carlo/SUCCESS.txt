@@ -1,5 +1,0 @@
-Monte Carlo Analysis Completed at 2025-08-21T03:37:07.377372
-Trials: 1000
-Collision reduction: 89.8%
-Coverage: 0.950
-Statistical significance: p < 0.001

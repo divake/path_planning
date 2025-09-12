@@ -1,4 +1,0 @@
-Method,Collision Rate,Path Length (m),Min Clearance (m),Planning Time (s),Success Rate,Coverage,Adaptivity
-Naive,0.306 ± 0.194,37.2 ± 5.7,1.60 ± 0.95,0.260 ± 0.041,82.0%,-,-
-Ensemble,0.095 ± 0.068,42.4 ± 6.9,2.59 ± 1.50,1.008 ± 0.108,100.0%,-,-
-Learnable CP,0.036 ± 0.023,39.8 ± 6.4,2.24 ± 1.30,0.630 ± 0.076,100.0%,0.949,0.695
