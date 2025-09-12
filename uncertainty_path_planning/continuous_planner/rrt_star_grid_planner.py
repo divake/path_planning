@@ -25,7 +25,8 @@ class RRTStarGrid:
                  max_iter: int = 3000,
                  goal_threshold: float = 1.0,
                  search_radius: float = 5.0,
-                 seed: Optional[int] = None):
+                 seed: Optional[int] = None,
+                 early_termination: bool = True):
         """
         Initialize RRT* planner for grid maps
         
@@ -41,6 +42,7 @@ class RRTStarGrid:
             goal_threshold: Distance threshold to consider goal reached
             search_radius: Radius for rewiring
             seed: Random seed for reproducibility
+            early_termination: If True, stop immediately when first path found
         """
         self.start = start
         self.goal = goal
@@ -53,6 +55,7 @@ class RRTStarGrid:
         self.goal_threshold = goal_threshold
         self.search_radius = search_radius
         self.goal_sample_rate = 0.3  # Default 30% chance to sample goal
+        self.early_termination = early_termination  # Stop as soon as path is found
         
         # Calculate bounds from grid
         self.height_pixels, self.width_pixels = occupancy_grid.shape
@@ -238,36 +241,44 @@ class RRTStarGrid:
             if not self.is_path_collision_free(nearest_point, new_point):
                 continue
             
-            # Find near nodes for rewiring
-            near_indices = self.near_nodes(new_point)
-            
-            # Choose best parent
-            min_cost = self.costs[nearest_idx] + self.distance(nearest_point, new_point)
-            best_parent_idx = nearest_idx
-            
-            for near_idx in near_indices:
-                near_node = self.nodes[near_idx]
-                if self.is_path_collision_free(near_node, new_point):
-                    cost = self.costs[near_idx] + self.distance(near_node, new_point)
-                    if cost < min_cost:
-                        min_cost = cost
-                        best_parent_idx = near_idx
-            
-            # Add new node
-            new_idx = len(self.nodes)
-            self.nodes.append(new_point)
-            self.parents[new_idx] = best_parent_idx
-            self.costs[new_idx] = min_cost
-            
-            # Rewire tree
-            for near_idx in near_indices:
-                near_node = self.nodes[near_idx]
-                new_cost = min_cost + self.distance(new_point, near_node)
+            if self.early_termination:
+                # Simple RRT mode - no rewiring, just connect to nearest
+                new_idx = len(self.nodes)
+                self.nodes.append(new_point)
+                self.parents[new_idx] = nearest_idx
+                self.costs[new_idx] = self.costs[nearest_idx] + self.distance(nearest_point, new_point)
+            else:
+                # RRT* mode with rewiring for optimal path
+                # Find near nodes for rewiring
+                near_indices = self.near_nodes(new_point)
                 
-                if (new_cost < self.costs[near_idx] and 
-                    self.is_path_collision_free(new_point, near_node)):
-                    self.parents[near_idx] = new_idx
-                    self.costs[near_idx] = new_cost
+                # Choose best parent
+                min_cost = self.costs[nearest_idx] + self.distance(nearest_point, new_point)
+                best_parent_idx = nearest_idx
+                
+                for near_idx in near_indices:
+                    near_node = self.nodes[near_idx]
+                    if self.is_path_collision_free(near_node, new_point):
+                        cost = self.costs[near_idx] + self.distance(near_node, new_point)
+                        if cost < min_cost:
+                            min_cost = cost
+                            best_parent_idx = near_idx
+                
+                # Add new node
+                new_idx = len(self.nodes)
+                self.nodes.append(new_point)
+                self.parents[new_idx] = best_parent_idx
+                self.costs[new_idx] = min_cost
+                
+                # Rewire tree
+                for near_idx in near_indices:
+                    near_node = self.nodes[near_idx]
+                    new_cost = min_cost + self.distance(new_point, near_node)
+                    
+                    if (new_cost < self.costs[near_idx] and 
+                        self.is_path_collision_free(new_point, near_node)):
+                        self.parents[near_idx] = new_idx
+                        self.costs[near_idx] = new_cost
             
             # Check if goal reached
             if self.distance(new_point, self.goal) <= self.goal_threshold:
@@ -279,7 +290,7 @@ class RRTStarGrid:
                     final_idx = len(self.nodes)
                     self.nodes.append(self.goal)
                     self.parents[final_idx] = new_idx
-                    self.costs[final_idx] = min_cost + self.distance(new_point, self.goal)
+                    self.costs[final_idx] = self.costs[new_idx] + self.distance(new_point, self.goal)
                     goal_node_idx = final_idx
                 
                 print(f"  Goal reached at iteration {iteration}")
