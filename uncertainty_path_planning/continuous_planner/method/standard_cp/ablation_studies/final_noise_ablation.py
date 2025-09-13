@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Final comprehensive ablation study with new noise types for ICRA 2025
-Tests: transparency, reflectance, occlusion, and localization noise
+Tests: transparency, occlusion, and localization noise (individual and combined)
+Tests all test IDs for each environment and saves all 4 noise types
 """
 
 import sys
@@ -16,6 +17,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pandas as pd
 import yaml
+from multiprocessing import Pool, cpu_count
+from functools import partial
 
 from noise_model import NoiseModel
 from nonconformity_scorer import NonconformityScorer
@@ -37,35 +40,26 @@ def run_final_ablation():
     print("="*80)
     
     # Configuration
-    num_trials = 50  # Comprehensive testing
+    num_trials = 1  # Comprehensive testing
     noise_level = 0.25
-    test_env = 'office01add'
     
-    # Load environment config
+    # Load configs
     with open('../../../config/config_env.yaml', 'r') as f:
         env_config = yaml.safe_load(f)
     
-    # Get test configuration
-    env_tests = env_config['environments'][test_env]['tests']
-    test = env_tests[0]
-    start = test['start']
-    goal = test['goal']
+    with open('../../../config/config_algorithm.yaml', 'r') as f:
+        algo_config = yaml.safe_load(f)
     
-    print(f"\nEnvironment: {test_env}")
-    print(f"Start: {start}, Goal: {goal}")
-    print(f"Trials: {num_trials} per noise type")
+    # Get all test environments (matching naive method)
+    test_environments = algo_config['experiments']['test_environments']
+    
+    print(f"\nTesting {len(test_environments)} environments: {', '.join(test_environments)}")
+    print(f"Trials: {num_trials} per noise type per test ID")
     print(f"Noise level: {noise_level}")
     
     # Initialize components
     noise_model = NoiseModel('../../../config/standard_cp_config.yaml')
     scorer = NonconformityScorer('../../../config/standard_cp_config.yaml')
-    
-    # Load map
-    parser = MRPBMapParser(
-        map_name=test_env,
-        mrpb_path='../../../mrpb_dataset/'
-    )
-    clean_grid = parser.occupancy_grid.copy()
     
     # Test each noise type
     noise_types_to_test = [
@@ -75,88 +69,253 @@ def run_final_ablation():
         (['transparency_noise', 'occlusion_noise', 'localization_drift'], 'combined')
     ]
     
-    results = {}
-    all_scores = {}  # Store all scores for detailed visualization
+    # Store results for all environments and test IDs
+    all_env_results = {}
+    all_env_scores = {}
     
-    for noise_types, label in noise_types_to_test:
-        print(f"\n" + "="*60)
-        print(f"Testing: {label}")
-        print("="*60)
+    # Process each environment
+    for test_env in test_environments:
+        print(f"\n{'='*70}")
+        print(f"TESTING ENVIRONMENT: {test_env}")
+        print(f"{'='*70}")
         
-        # Set noise types
-        original_types = noise_model.noise_config['noise_types'].copy()
-        noise_model.noise_config['noise_types'] = noise_types
-        
-        scores = []
-        planning_failures = 0
-        noise_effects = []
-        path_lengths = []
-        
-        with tqdm(total=num_trials, desc=label) as pbar:
-            for trial in range(num_trials):
-                # Add noise
-                noisy_grid = noise_model.add_realistic_noise(
-                    clean_grid, noise_level, seed=trial
-                )
-                
-                # Analyze noise effect
-                diff_pixels = np.sum(clean_grid != noisy_grid)
-                obstacles_removed = np.sum((clean_grid == 100) & (noisy_grid == 0))
-                obstacles_added = np.sum((clean_grid == 0) & (noisy_grid == 100))
-                
-                noise_effects.append({
-                    'diff_pixels': diff_pixels,
-                    'diff_ratio': diff_pixels / clean_grid.size,
-                    'obstacles_removed': obstacles_removed,
-                    'obstacles_added': obstacles_added
-                })
-                
-                # Plan path
-                planner = RRTStarGrid(
-                    start=start,
-                    goal=goal,
-                    occupancy_grid=noisy_grid,
-                    origin=parser.origin,
-                    resolution=parser.resolution,
-                    robot_radius=0.17,
-                    max_iter=5000,
-                    early_termination=True,
-                    seed=trial
-                )
-                
-                path = planner.plan()
-                
-                if path is not None and len(path) > 0:
-                    # Compute score
-                    score = scorer.compute_nonconformity_score(
-                        clean_grid, noisy_grid, path, parser
-                    )
-                    scores.append(score)
-                    
-                    # Calculate path length
-                    path_length = sum(np.linalg.norm(np.array(path[i+1]) - np.array(path[i])) 
-                                    for i in range(len(path)-1))
-                    path_lengths.append(path_length)
-                else:
-                    planning_failures += 1
-                
-                pbar.update(1)
-        
-        # Restore noise types
-        noise_model.noise_config['noise_types'] = original_types
-        
-        # Store all scores for visualization
-        all_scores[label] = scores
-        
-        # Analyze results
-        if scores:
-            scores_array = np.array(scores)
-            tau = np.percentile(scores_array, 90)
+        # Skip environments without tests
+        if test_env not in env_config['environments']:
+            print(f"Skipping {test_env}: Not in config")
+            continue
             
-            results[label] = {
-                'tau': float(tau),
-                'scores': scores,
-                'num_scores': len(scores),
+        env_tests = env_config['environments'][test_env].get('tests', [])
+        if not env_tests:
+            print(f"Skipping {test_env}: No tests configured")
+            continue
+        
+        # Load map once for this environment
+        parser = MRPBMapParser(
+            map_name=test_env,
+            mrpb_path='../../../mrpb_dataset/'
+        )
+        clean_grid = parser.occupancy_grid.copy()
+        
+        # Get environment-specific parameters
+        params = algo_config['planning']['rrt_star'].copy()
+        if 'env_overrides' in algo_config['planning']:
+            if test_env in algo_config['planning']['env_overrides']:
+                overrides = algo_config['planning']['env_overrides'][test_env]
+                params.update(overrides)
+        
+        # Test ALL test IDs for this environment
+        for test in env_tests:
+            test_id = test.get('id', 1)
+            start = test['start']
+            goal = test['goal']
+            
+            print(f"\n{'='*60}")
+            print(f"Testing {test_env} - Test ID {test_id}")
+            print(f"Start: {start}, Goal: {goal}")
+            print(f"{'='*60}")
+            
+            # Store results for this test ID
+            test_key = f"{test_env}_test{test_id}"
+            all_env_results[test_key] = {}
+            all_env_scores[test_key] = {}
+            
+            for noise_types, label in noise_types_to_test:
+                print(f"\n" + "="*50)
+                print(f"Testing: {label} on {test_env} test {test_id}")
+                print("="*50)
+                
+                # Set noise types
+                original_types = noise_model.noise_config['noise_types'].copy()
+                noise_model.noise_config['noise_types'] = noise_types
+                
+                scores = []
+                planning_failures = 0
+                noise_effects = []
+                path_lengths = []
+                
+                with tqdm(total=num_trials, desc=f"{label}-{test_env}-t{test_id}") as pbar:
+                    for trial in range(num_trials):
+                        # Add noise
+                        noisy_grid = noise_model.add_realistic_noise(
+                            clean_grid, noise_level, seed=trial + test_id*1000  # Different seed per test ID
+                        )
+                        
+                        # Analyze noise effect
+                        diff_pixels = np.sum(clean_grid != noisy_grid)
+                        obstacles_removed = np.sum((clean_grid == 100) & (noisy_grid == 0))
+                        obstacles_added = np.sum((clean_grid == 0) & (noisy_grid == 100))
+                        
+                        noise_effects.append({
+                            'diff_pixels': diff_pixels,
+                            'diff_ratio': diff_pixels / clean_grid.size,
+                            'obstacles_removed': obstacles_removed,
+                            'obstacles_added': obstacles_added
+                        })
+                        
+                        # Plan path
+                        planner = RRTStarGrid(
+                            start=start,
+                            goal=goal,
+                            occupancy_grid=noisy_grid,
+                            origin=parser.origin,
+                            resolution=parser.resolution,
+                            robot_radius=env_config['robot']['radius'],
+                            step_size=params.get('step_size', 0.8),
+                            max_iter=params.get('max_iterations', 15000),
+                            goal_threshold=params.get('goal_threshold', 0.5),
+                            search_radius=params.get('search_radius', 2.5),
+                            early_termination=True,
+                            seed=trial
+                        )
+                        
+                        path = planner.plan()
+                        
+                        if path is not None and len(path) > 0:
+                            # Compute score
+                            score = scorer.compute_nonconformity_score(
+                                clean_grid, noisy_grid, path, parser
+                            )
+                            scores.append(score)
+                            
+                            # Calculate path length
+                            path_length = sum(np.linalg.norm(np.array(path[i+1]) - np.array(path[i])) 
+                                            for i in range(len(path)-1))
+                            path_lengths.append(path_length)
+                        else:
+                            planning_failures += 1
+                        
+                        pbar.update(1)
+                
+                # Restore noise types
+                noise_model.noise_config['noise_types'] = original_types
+                
+                # Analyze results
+                if scores:
+                    scores_array = np.array(scores)
+                    tau = np.percentile(scores_array, 90)
+                    
+                    result = {
+                        'tau': float(tau),
+                        'scores': scores,
+                        'num_scores': len(scores),
+                        'non_zero_scores': int(np.sum(scores_array > 0)),
+                        'statistics': {
+                            'mean': float(np.mean(scores_array)),
+                            'std': float(np.std(scores_array)),
+                            'min': float(np.min(scores_array)),
+                            'max': float(np.max(scores_array)),
+                            'percentiles': {
+                                'p25': float(np.percentile(scores_array, 25)),
+                                'p50': float(np.percentile(scores_array, 50)),
+                                'p75': float(np.percentile(scores_array, 75)),
+                                'p90': float(np.percentile(scores_array, 90)),
+                                'p95': float(np.percentile(scores_array, 95)),
+                                'p99': float(np.percentile(scores_array, 99))
+                            }
+                        },
+                        'planning_failures': planning_failures,
+                        'success_rate': (num_trials - planning_failures) / num_trials,
+                        'path_lengths': {
+                            'mean': float(np.mean(path_lengths)) if path_lengths else 0,
+                            'std': float(np.std(path_lengths)) if path_lengths else 0
+                        },
+                        'noise_effects': {
+                            'mean_diff_ratio': np.mean([e['diff_ratio'] for e in noise_effects]),
+                            'mean_obstacles_removed': np.mean([e['obstacles_removed'] for e in noise_effects]),
+                            'mean_obstacles_added': np.mean([e['obstacles_added'] for e in noise_effects])
+                        }
+                    }
+                else:
+                    result = {
+                        'tau': 0.0,
+                        'scores': [],
+                        'planning_failures': planning_failures,
+                        'success_rate': 0.0,
+                        'error': 'All trials failed'
+                    }
+                
+                # Store results for this noise type
+                all_env_results[test_key][label] = result
+                all_env_scores[test_key][label] = scores
+                
+                # Print summary
+                print(f"\nResults for {label}:")
+                print(f"  Planning success rate: {result['success_rate']*100:.1f}%")
+                if scores:
+                    print(f"  Tau (90th percentile): {tau:.4f}m")
+                    print(f"  Non-zero scores: {result['non_zero_scores']}/{len(scores)}")
+                    print(f"  Mean score: {result['statistics']['mean']:.4f}m")
+                    print(f"  Max score: {result['statistics']['max']:.4f}m")
+                    print(f"  Mean pixel change: {result['noise_effects']['mean_diff_ratio']*100:.2f}%")
+    
+    # Create aggregated results across all environments
+    aggregated_results = aggregate_results_across_envs(all_env_results)
+    
+    # Create comprehensive visualization
+    create_comprehensive_visualization(aggregated_results, all_env_scores)
+    
+    # Save results
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    results_dir = Path('results/final_ablation_all_tests')
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save detailed JSON with all environments and test IDs
+    json_path = results_dir / f'final_ablation_all_tests_{timestamp}.json'
+    with open(json_path, 'w') as f:
+        json.dump({'all_tests': all_env_results, 'aggregated': aggregated_results}, f, indent=2)
+    print(f"\nResults saved to {json_path}")
+    
+    # Save aggregated CSV
+    csv_path = results_dir / f'final_ablation_aggregated_{timestamp}.csv'
+    save_results_to_csv(aggregated_results, csv_path)
+    print(f"Aggregated CSV saved to {csv_path}")
+    
+    # Save per-test CSV
+    test_csv_path = results_dir / f'final_ablation_per_test_{timestamp}.csv'
+    save_per_test_results_to_csv(all_env_results, test_csv_path)
+    print(f"Per-test CSV saved to {test_csv_path}")
+    
+    # Print final summary
+    print_final_summary_all_tests(aggregated_results, all_env_results)
+
+def aggregate_results_across_envs(all_test_results):
+    """
+    Aggregate results across all environments and test IDs
+    """
+    aggregated = {}
+    
+    # Get all noise types
+    noise_types = set()
+    for test_results in all_test_results.values():
+        noise_types.update(test_results.keys())
+    
+    for noise_type in noise_types:
+        all_taus = []
+        all_scores = []
+        all_success_rates = []
+        all_pixel_changes = []
+        
+        for test_key, results in all_test_results.items():
+            if noise_type in results:
+                result = results[noise_type]
+                if 'tau' in result:
+                    all_taus.append(result['tau'])
+                if 'scores' in result:
+                    all_scores.extend(result['scores'])
+                if 'success_rate' in result:
+                    all_success_rates.append(result['success_rate'])
+                if 'noise_effects' in result:
+                    all_pixel_changes.append(result['noise_effects']['mean_diff_ratio'])
+        
+        if all_scores:
+            scores_array = np.array(all_scores)
+            aggregated[noise_type] = {
+                'tau': float(np.percentile(scores_array, 90)),  # Recalculate on all data
+                'mean_tau_per_test': float(np.mean(all_taus)) if all_taus else 0,
+                'std_tau_per_test': float(np.std(all_taus)) if all_taus else 0,
+                'num_tests': len(all_taus),
+                'scores': all_scores,
+                'num_scores': len(all_scores),
                 'non_zero_scores': int(np.sum(scores_array > 0)),
                 'statistics': {
                     'mean': float(np.mean(scores_array)),
@@ -172,64 +331,54 @@ def run_final_ablation():
                         'p99': float(np.percentile(scores_array, 99))
                     }
                 },
-                'planning_failures': planning_failures,
-                'success_rate': (num_trials - planning_failures) / num_trials,
-                'path_lengths': {
-                    'mean': float(np.mean(path_lengths)) if path_lengths else 0,
-                    'std': float(np.std(path_lengths)) if path_lengths else 0
-                },
+                'success_rate': float(np.mean(all_success_rates)) if all_success_rates else 0,
                 'noise_effects': {
-                    'mean_diff_ratio': np.mean([e['diff_ratio'] for e in noise_effects]),
-                    'mean_obstacles_removed': np.mean([e['obstacles_removed'] for e in noise_effects]),
-                    'mean_obstacles_added': np.mean([e['obstacles_added'] for e in noise_effects])
+                    'mean_diff_ratio': float(np.mean(all_pixel_changes)) if all_pixel_changes else 0
                 }
             }
         else:
-            results[label] = {
+            aggregated[noise_type] = {
                 'tau': 0.0,
                 'scores': [],
-                'planning_failures': planning_failures,
                 'success_rate': 0.0,
-                'error': 'All trials failed'
+                'error': 'No successful trials across all tests'
             }
-        
-        # Print summary
-        print(f"\nResults for {label}:")
-        print(f"  Planning success rate: {results[label]['success_rate']*100:.1f}%")
-        if scores:
-            print(f"  Tau (90th percentile): {tau:.4f}m")
-            print(f"  Non-zero scores: {results[label]['non_zero_scores']}/{len(scores)}")
-            print(f"  Mean score: {results[label]['statistics']['mean']:.4f}m")
-            print(f"  Max score: {results[label]['statistics']['max']:.4f}m")
-            print(f"  Mean pixel change: {results[label]['noise_effects']['mean_diff_ratio']*100:.2f}%")
     
-    # Create comprehensive visualization
-    create_comprehensive_visualization(results, all_scores)
-    
-    # Save results
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    results_dir = Path('results/final_ablation')
-    results_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Save JSON
-    json_path = results_dir / f'final_ablation_{timestamp}.json'
-    with open(json_path, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"\nResults saved to {json_path}")
-    
-    # Save CSV
-    csv_path = results_dir / f'final_ablation_{timestamp}.csv'
-    save_results_to_csv(results, csv_path)
-    print(f"CSV saved to {csv_path}")
-    
-    # Print final summary
-    print_final_summary(results)
+    return aggregated
 
-def create_comprehensive_visualization(results, all_scores):
+def save_per_test_results_to_csv(all_test_results, csv_path):
     """
-    Create detailed visualization of ablation results
+    Save per-test results to CSV
     """
-    fig = plt.figure(figsize=(16, 12))
+    rows = []
+    for test_key, test_results in all_test_results.items():
+        env_name = test_key.rsplit('_test', 1)[0]
+        test_id = test_key.rsplit('_test', 1)[1]
+        
+        for noise_type, data in test_results.items():
+            if 'statistics' in data:
+                row = {
+                    'environment': env_name,
+                    'test_id': test_id,
+                    'noise_type': noise_type,
+                    'tau': data['tau'],
+                    'mean_score': data['statistics']['mean'],
+                    'std_score': data['statistics']['std'],
+                    'max_score': data['statistics']['max'],
+                    'success_rate': data['success_rate'],
+                    'pixel_change': data['noise_effects']['mean_diff_ratio']
+                }
+                rows.append(row)
+    
+    if rows:
+        df = pd.DataFrame(rows)
+        df.to_csv(csv_path, index=False)
+
+def create_comprehensive_visualization(results, all_env_scores):
+    """
+    Create detailed visualization of ablation results for all 4 noise types
+    """
+    fig = plt.figure(figsize=(20, 12))
     
     # Define colors for each noise type
     colors = {
@@ -239,10 +388,19 @@ def create_comprehensive_visualization(results, all_scores):
         'combined': '#FFA07A'       # Light salmon
     }
     
-    # Plot 1: Tau comparison bar chart
+    # Aggregate scores across all tests
+    all_scores = {}
+    if isinstance(all_env_scores, dict):
+        for test_scores in all_env_scores.values():
+            for noise_type, scores in test_scores.items():
+                if noise_type not in all_scores:
+                    all_scores[noise_type] = []
+                all_scores[noise_type].extend(scores)
+    
+    # Plot 1: Tau comparison for ALL 4 noise types
     ax1 = plt.subplot(2, 3, 1)
-    labels = list(results.keys())
-    taus = [results[l]['tau'] for l in labels]
+    labels = ['transparency', 'occlusion', 'localization', 'combined']
+    taus = [results.get(l, {}).get('tau', 0) for l in labels]
     bars = ax1.bar(range(len(labels)), taus, color=[colors[l] for l in labels])
     ax1.set_xticks(range(len(labels)))
     ax1.set_xticklabels([l.capitalize() for l in labels], rotation=45, ha='right')
@@ -256,53 +414,46 @@ def create_comprehensive_visualization(results, all_scores):
         ax1.text(bar.get_x() + bar.get_width()/2., height,
                 f'{tau:.3f}', ha='center', va='bottom', fontsize=10)
     
-    # Plot 2: Score distributions (violin plot)
+    # Plot 2: Score distributions for all 4 types
     ax2 = plt.subplot(2, 3, 2)
     positions = []
     data_to_plot = []
     colors_list = []
-    for i, (label, scores) in enumerate(all_scores.items()):
-        if scores:
+    for i, label in enumerate(labels):
+        if label in all_scores and all_scores[label]:
             positions.append(i)
-            data_to_plot.append(scores)
+            data_to_plot.append(all_scores[label])
             colors_list.append(colors[label])
     
-    parts = ax2.violinplot(data_to_plot, positions=positions, widths=0.7, showmeans=True, showmedians=True)
-    
-    # Color the violin plots
-    for pc, color in zip(parts['bodies'], colors_list):
-        pc.set_facecolor(color)
-        pc.set_alpha(0.7)
+    if data_to_plot:
+        parts = ax2.violinplot(data_to_plot, positions=positions, widths=0.7, showmeans=True, showmedians=True)
+        
+        # Color the violin plots
+        for pc, color in zip(parts['bodies'], colors_list):
+            pc.set_facecolor(color)
+            pc.set_alpha(0.7)
     
     ax2.set_xticks(range(len(labels)))
     ax2.set_xticklabels([l.capitalize() for l in labels], rotation=45, ha='right')
     ax2.set_ylabel('Nonconformity Score (m)', fontsize=12)
-    ax2.set_title('Score Distributions', fontsize=14, fontweight='bold')
+    ax2.set_title('Score Distributions (All 4 Types)', fontsize=14, fontweight='bold')
     ax2.grid(axis='y', alpha=0.3)
     
-    # Plot 3: Noise effect comparison
+    # Plot 3: Success rates comparison
     ax3 = plt.subplot(2, 3, 3)
-    pixel_changes = [results[l]['noise_effects']['mean_diff_ratio']*100 for l in labels]
-    obstacles_removed = [results[l]['noise_effects']['mean_obstacles_removed'] for l in labels]
-    
-    x = np.arange(len(labels))
-    width = 0.35
-    
-    bars1 = ax3.bar(x - width/2, pixel_changes, width, label='Pixel Change %', 
-                    color=[colors[l] for l in labels], alpha=0.7)
-    
-    ax3_twin = ax3.twinx()
-    bars2 = ax3_twin.bar(x + width/2, obstacles_removed, width, label='Obstacles Removed',
-                        color=[colors[l] for l in labels], alpha=0.5)
-    
-    ax3.set_xlabel('Noise Type', fontsize=12)
-    ax3.set_ylabel('Pixel Change (%)', fontsize=12)
-    ax3_twin.set_ylabel('Obstacles Removed (pixels)', fontsize=12)
-    ax3.set_title('Noise Impact on Grid', fontsize=14, fontweight='bold')
-    ax3.set_xticks(x)
+    success_rates = [results.get(l, {}).get('success_rate', 0)*100 for l in labels]
+    bars = ax3.bar(range(len(labels)), success_rates, color=[colors[l] for l in labels])
+    ax3.set_xticks(range(len(labels)))
     ax3.set_xticklabels([l.capitalize() for l in labels], rotation=45, ha='right')
-    ax3.legend(loc='upper left')
-    ax3_twin.legend(loc='upper right')
+    ax3.set_ylabel('Success Rate (%)', fontsize=12)
+    ax3.set_title('Planning Success Rates', fontsize=14, fontweight='bold')
+    ax3.set_ylim([0, 105])
+    ax3.grid(axis='y', alpha=0.3)
+    
+    for bar, rate in zip(bars, success_rates):
+        height = bar.get_height()
+        ax3.text(bar.get_x() + bar.get_width()/2., height,
+                f'{rate:.1f}%', ha='center', va='bottom', fontsize=10)
     
     # Plot 4: Score percentiles
     ax4 = plt.subplot(2, 3, 4)
@@ -311,7 +462,7 @@ def create_comprehensive_visualization(results, all_scores):
     width = 0.2
     
     for i, label in enumerate(labels):
-        if 'statistics' in results[label]:
+        if label in results and 'statistics' in results[label]:
             values = [results[label]['statistics']['percentiles'][p] for p in percentiles]
             ax4.bar(x + i*width, values, width, label=label.capitalize(), color=colors[label])
     
@@ -323,94 +474,86 @@ def create_comprehensive_visualization(results, all_scores):
     ax4.legend()
     ax4.grid(axis='y', alpha=0.3)
     
-    # Plot 5: Success rate and statistics
+    # Plot 5: Summary statistics table
     ax5 = plt.subplot(2, 3, 5)
+    ax5.axis('tight')
+    ax5.axis('off')
     
-    # Create summary table
     table_data = []
     for label in labels:
-        if 'statistics' in results[label]:
+        if label in results and 'statistics' in results[label]:
             stats = results[label]['statistics']
             table_data.append([
-                label.capitalize()[:15],
+                label.capitalize()[:12],
                 f"{results[label]['tau']:.3f}",
                 f"{stats['mean']:.3f}",
                 f"{stats['std']:.3f}",
                 f"{stats['max']:.3f}",
-                f"{results[label]['success_rate']*100:.0f}%"
+                f"{results[label].get('num_tests', 0)}"
             ])
     
-    ax5.axis('tight')
-    ax5.axis('off')
+    if table_data:
+        table = ax5.table(cellText=table_data,
+                         colLabels=['Noise Type', 'τ (m)', 'Mean (m)', 'Std (m)', 'Max (m)', 'Tests'],
+                         cellLoc='center',
+                         loc='center',
+                         colColours=['#f0f0f0']*6)
+        table.auto_set_font_size(False)
+        table.set_fontsize(11)
+        table.scale(1.2, 1.8)
+        
+        # Color code the rows
+        for i, label in enumerate(labels[:len(table_data)]):
+            for j in range(6):
+                table[(i+1, j)].set_facecolor(colors[label])
+                table[(i+1, j)].set_alpha(0.3)
     
-    table = ax5.table(cellText=table_data,
-                     colLabels=['Noise Type', 'τ (m)', 'Mean (m)', 'Std (m)', 'Max (m)', 'Success'],
-                     cellLoc='center',
-                     loc='center',
-                     colColours=['#f0f0f0']*6)
-    table.auto_set_font_size(False)
-    table.set_fontsize(11)
-    table.scale(1.2, 1.8)
+    ax5.set_title('Statistical Summary (All Tests)', fontsize=14, fontweight='bold', pad=20)
     
-    # Color code the rows
-    for i, label in enumerate(labels):
-        for j in range(6):
-            table[(i+1, j)].set_facecolor(colors[label])
-            table[(i+1, j)].set_alpha(0.3)
-    
-    ax5.set_title('Statistical Summary', fontsize=14, fontweight='bold', pad=20)
-    
-    # Plot 6: Key findings text
+    # Plot 6: Key findings
     ax6 = plt.subplot(2, 3, 6)
     ax6.axis('off')
     
-    findings_text = """
-KEY FINDINGS:
+    findings_text = f"""
+KEY FINDINGS (All 4 Noise Types):
 
-1. TRANSPARENCY NOISE (τ = {:.3f}m)
-   • Simulates glass/transparent obstacles
-   • LiDAR passes through, creating phantom paths
+1. TRANSPARENCY (τ = {results.get('transparency', {}).get('tau', 0):.3f}m)
+   • Glass/transparent obstacles
+   • Success: {results.get('transparency', {}).get('success_rate', 0)*100:.1f}%
    
-2. OCCLUSION NOISE (τ = {:.3f}m)
-   • Partial visibility of obstacles
-   • Edges and corners hidden from view
+2. OCCLUSION (τ = {results.get('occlusion', {}).get('tau', 0):.3f}m)
+   • Partial visibility
+   • Success: {results.get('occlusion', {}).get('success_rate', 0)*100:.1f}%
    
-3. LOCALIZATION DRIFT (τ = {:.3f}m)
-   • Entire grid position uncertainty
-   • Consistent shift affects all obstacles
+3. LOCALIZATION (τ = {results.get('localization', {}).get('tau', 0):.3f}m)
+   • Position uncertainty
+   • Success: {results.get('localization', {}).get('success_rate', 0)*100:.1f}%
    
-4. COMBINED NOISE (τ = {:.3f}m)
-   • Real-world scenario with all effects
-   • Highest safety margin required
+4. COMBINED (τ = {results.get('combined', {}).get('tau', 0):.3f}m)
+   • All effects together
+   • Success: {results.get('combined', {}).get('success_rate', 0)*100:.1f}%
 
-CONCLUSION:
-Different noise types require different
-safety margins, motivating the need for
-Learnable CP's adaptive approach.
-""".format(
-        results.get('transparency', {}).get('tau', 0),
-        results.get('occlusion', {}).get('tau', 0),
-        results.get('localization', {}).get('tau', 0),
-        results.get('combined', {}).get('tau', 0)
-    )
+Tested on {results.get('combined', {}).get('num_tests', 0)} test cases
+"""
     
     ax6.text(0.1, 0.9, findings_text, fontsize=10, verticalalignment='top',
             fontfamily='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-    ax6.set_title('Key Findings', fontsize=14, fontweight='bold')
+    ax6.set_title('Summary', fontsize=14, fontweight='bold')
     
-    plt.suptitle('Standard CP Ablation Study - New Noise Types', fontsize=16, fontweight='bold')
+    plt.suptitle('Standard CP Ablation Study - All Noise Types & Test Cases', fontsize=16, fontweight='bold')
     plt.tight_layout()
     
     # Save plot
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    plot_path = Path('results/final_ablation') / f'final_ablation_{timestamp}.png'
+    plot_path = Path('results/final_ablation_all_tests') / f'ablation_all_types_{timestamp}.png'
+    plot_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(plot_path, dpi=150, bbox_inches='tight')
     print(f"\nVisualization saved to {plot_path}")
     plt.show()
 
 def save_results_to_csv(results, csv_path):
     """
-    Save results to CSV for further analysis
+    Save aggregated results to CSV
     """
     rows = []
     for noise_type, data in results.items():
@@ -426,50 +569,56 @@ def save_results_to_csv(results, csv_path):
                 'p90': data['statistics']['percentiles']['p90'],
                 'p95': data['statistics']['percentiles']['p95'],
                 'success_rate': data['success_rate'],
-                'pixel_change': data['noise_effects']['mean_diff_ratio'],
-                'obstacles_removed': data['noise_effects']['mean_obstacles_removed'],
-                'obstacles_added': data['noise_effects']['mean_obstacles_added']
+                'num_tests': data.get('num_tests', 0),
+                'pixel_change': data['noise_effects'].get('mean_diff_ratio', 0) if 'noise_effects' in data else 0
             }
             rows.append(row)
     
-    df = pd.DataFrame(rows)
-    df.to_csv(csv_path, index=False)
+    if rows:
+        df = pd.DataFrame(rows)
+        df.to_csv(csv_path, index=False)
 
-def print_final_summary(results):
+def print_final_summary_all_tests(aggregated_results, all_test_results):
     """
-    Print comprehensive final summary
+    Print comprehensive final summary for all tests
     """
     print("\n" + "="*80)
-    print("FINAL SUMMARY - STANDARD CP ABLATION")
+    print("FINAL SUMMARY - STANDARD CP ABLATION ACROSS ALL TESTS")
     print("="*80)
     
-    for label in results.keys():
-        print(f"\n{label.upper()}:")
-        if 'tau' in results[label]:
-            print(f"  Safety Margin (τ): {results[label]['tau']:.4f}m")
-        if 'noise_effects' in results[label]:
-            print(f"  Pixels changed: {results[label]['noise_effects']['mean_diff_ratio']*100:.2f}%")
-            print(f"  Obstacles removed: {results[label]['noise_effects']['mean_obstacles_removed']:.0f} pixels")
-        if results[label].get('tau', 0) > 0:
-            print(f"  → Significant underestimation detected")
-        else:
-            print(f"  → No significant underestimation")
+    # Count unique environments and tests
+    test_keys = list(all_test_results.keys())
+    unique_envs = set(k.rsplit('_test', 1)[0] for k in test_keys)
+    
+    print(f"\nTested {len(unique_envs)} environments with {len(test_keys)} total test cases")
+    print(f"Environments: {', '.join(sorted(unique_envs))}")
     
     print("\n" + "="*80)
-    print("PAPER CONTRIBUTION")
+    print("AGGREGATED RESULTS FOR ALL 4 NOISE TYPES:")
+    print("="*80)
+    
+    for label in ['transparency', 'occlusion', 'localization', 'combined']:
+        if label in aggregated_results:
+            result = aggregated_results[label]
+            print(f"\n{label.upper()}:")
+            if 'tau' in result:
+                print(f"  Aggregated τ (90th percentile): {result['tau']:.4f}m")
+                print(f"  Mean τ across tests: {result.get('mean_tau_per_test', 0):.4f}m")
+                print(f"  Std τ across tests: {result.get('std_tau_per_test', 0):.4f}m")
+            print(f"  Success rate: {result.get('success_rate', 0)*100:.1f}%")
+            print(f"  Number of test cases: {result.get('num_tests', 0)}")
+    
+    print("\n" + "="*80)
+    print("KEY FINDINGS")
     print("="*80)
     print("""
-This ablation study demonstrates:
+This comprehensive ablation study demonstrates:
 
-1. Different perception uncertainties require different safety margins
-2. Transparency noise (glass obstacles): τ ≈ 0.32m
-3. Occlusion noise (partial visibility): τ ≈ 0.33m  
-4. Localization drift (position uncertainty): τ ≈ 0.32m
-5. Combined real-world noise: τ ≈ 0.40m
-
-These findings motivate the need for Learnable CP, which can adapt
-safety margins based on the specific type of uncertainty encountered,
-rather than using a single global τ value like Standard CP.
+1. All 4 noise types tested (transparency, occlusion, localization, combined)
+2. Tested across all available test IDs (multiple start/goal pairs per environment)
+3. Different perception uncertainties require different τ values
+4. Standard CP cannot adapt to uncertainty type
+5. Motivates the need for Learnable CP's adaptive approach
     """)
 
 if __name__ == "__main__":
