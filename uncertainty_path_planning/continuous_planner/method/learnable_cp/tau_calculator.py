@@ -101,7 +101,8 @@ class AdaptiveTauCalculator:
         tau_calibrated = tau_raw * self.calibration_factor
         
         # Apply safety bounds
-        tau_bounded = np.clip(tau_calibrated, self.tau_min, self.tau_max)
+        # Don't clip - let tau vary naturally
+        tau_bounded = tau_calibrated
         
         # Apply feature-based adjustments
         tau_adjusted = self._apply_feature_adjustments(tau_bounded, features)
@@ -225,7 +226,8 @@ class AdaptiveTauCalculator:
             tau = min(tau, 0.25)
         
         # Final bounds check
-        return np.clip(tau, self.tau_min, self.tau_max)
+        # Don't clip - return tau directly
+        return tau
     
     def _smooth_tau_values(self, tau_values: List[float]) -> List[float]:
         """
@@ -276,7 +278,8 @@ class AdaptiveTauCalculator:
         idx = min(idx, len(sorted_scores) - 1)
         
         tau = sorted_scores[idx]
-        return np.clip(tau, self.tau_min, self.tau_max)
+        # Don't clip - return tau directly
+        return tau
     
     def get_statistics(self) -> Dict:
         """Get current statistics"""

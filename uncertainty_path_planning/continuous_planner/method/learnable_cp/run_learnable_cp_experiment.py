@@ -92,14 +92,14 @@ class LearnableCPExperiment:
             'num_features': 20,
             'hidden_dims': [128, 64, 32],
             'dropout': 0.2,
-            'learning_rate': 1e-3,
+            'learning_rate': 1e-4,  # Reduced to prevent divergence
             'batch_size': 64,
             'num_epochs': 50,  # Reduced for faster testing
             'num_trials': 10,  # Reduced for faster testing
             'noise_level': 0.25,
             'noise_types': ['transparency', 'occlusion', 'localization', 'combined'],
-            'tau_min': 0.05,
-            'tau_max': 0.50,
+            'tau_min': -10.0,  # Allow negative for nonconformity scores
+            'tau_max': 10.0,   # Allow large positive values
             'tau_default': 0.30
         }
         
@@ -374,14 +374,14 @@ class LearnableCPExperiment:
                 predicted_tau = model(features).squeeze()
                 
                 # Loss
-                loss, loss_dict = criterion(
+                loss = criterion(
                     predicted_tau, clearances.squeeze(), features
                 )
                 
                 # Backward pass
                 optimizer.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)  # More aggressive clipping
                 optimizer.step()
                 
                 train_losses.append(loss.item())
@@ -398,13 +398,15 @@ class LearnableCPExperiment:
                     clearances = batch['clearance'].to(self.device)
                     
                     predicted_tau = model(features).squeeze()
-                    loss, loss_dict = criterion(
+                    loss = criterion(
                         predicted_tau, clearances.squeeze(), features
                     )
                     
                     val_losses.append(loss.item())
-                    coverages.append(loss_dict['empirical_coverage'])
-                    avg_taus.append(loss_dict['avg_predicted_tau'])
+                    # Compute coverage and avg tau manually
+                    coverage = (predicted_tau >= clearances.squeeze()).float().mean().item()
+                    coverages.append(coverage)
+                    avg_taus.append(predicted_tau.mean().item())
             
             # Record metrics
             avg_train_loss = np.mean(train_losses)
@@ -600,7 +602,8 @@ class LearnableCPExperiment:
                         features_tensor = torch.FloatTensor(features).unsqueeze(0).to(self.device)
                         with torch.no_grad():
                             tau = model(features_tensor).item()
-                            tau = np.clip(tau, self.config['tau_min'], self.config['tau_max'])
+                            # Don't clip tau - let it vary naturally
+                            # tau = np.clip(tau, self.config['tau_min'], self.config['tau_max'])
                         
                         tau_values.append(tau)
                     

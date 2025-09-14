@@ -83,10 +83,14 @@ class AdaptiveTauNetwork(nn.Module):
         self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
         
     def _initialize_weights(self):
-        """Initialize network weights using Xavier initialization"""
+        """Initialize network weights carefully to prevent gradient explosion"""
         for module in self.modules():
             if isinstance(module, nn.Linear):
-                nn.init.xavier_uniform_(module.weight)
+                # Use smaller gain for output layer
+                if module == self.output_layer:
+                    nn.init.xavier_uniform_(module.weight, gain=0.01)
+                else:
+                    nn.init.xavier_uniform_(module.weight, gain=0.5)
                 if module.bias is not None:
                     nn.init.constant_(module.bias, 0.0)
             elif isinstance(module, nn.BatchNorm1d):
