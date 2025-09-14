@@ -59,6 +59,75 @@ def calculate_path_metrics(path, occupancy_grid, origin, resolution, robot_radiu
         'p_0': p_0
     }
 
+def run_single_trial(args):
+    """
+    Run a single trial for parallelization
+    Returns: (score, path_length, metrics, noise_effects, planning_time) or None if failed
+    """
+    trial, test_env, test_id, start, goal, noise_types, noise_level, clean_grid, parser, env_config, params = args
+    
+    # Initialize components for this worker
+    noise_model = NoiseModel('../../../config/standard_cp_config.yaml')
+    scorer = NonconformityScorer('../../../config/standard_cp_config.yaml')
+    
+    # Set noise types
+    noise_model.noise_config['noise_types'] = noise_types
+    
+    # Add noise with unique seed
+    noisy_grid = noise_model.add_realistic_noise(
+        clean_grid, noise_level, seed=trial + test_id*1000
+    )
+    
+    # Analyze noise effect
+    diff_pixels = np.sum(clean_grid != noisy_grid)
+    noise_effect = {
+        'diff_pixels': diff_pixels,
+        'diff_ratio': diff_pixels / clean_grid.size,
+        'obstacles_removed': np.sum((clean_grid == 100) & (noisy_grid == 0)),
+        'obstacles_added': np.sum((clean_grid == 0) & (noisy_grid == 100))
+    }
+    
+    # Plan path with timing
+    planner = RRTStarGrid(
+        start=start,
+        goal=goal,
+        occupancy_grid=noisy_grid,
+        origin=parser.origin,
+        resolution=parser.resolution,
+        robot_radius=env_config['robot']['radius'],
+        step_size=params.get('step_size', 0.8),
+        max_iter=params.get('max_iterations', 15000),
+        goal_threshold=params.get('goal_threshold', 0.5),
+        search_radius=params.get('search_radius', 2.5),
+        early_termination=True,
+        seed=trial
+    )
+    
+    planning_start = time.time()
+    path = planner.plan()
+    planning_time = time.time() - planning_start
+    
+    if path is not None and len(path) > 0:
+        # Compute score
+        score = scorer.compute_nonconformity_score(
+            clean_grid, noisy_grid, path, parser
+        )
+        
+        # Calculate path length
+        path_length = sum(np.linalg.norm(np.array(path[i+1]) - np.array(path[i])) 
+                        for i in range(len(path)-1))
+        
+        # Calculate metrics on noisy map
+        metrics = calculate_path_metrics(
+            path, noisy_grid, parser.origin, 
+            parser.resolution, env_config['robot']['radius']
+        )
+        metrics['waypoints'] = len(path)
+        
+        return score, path_length, metrics, noise_effect, planning_time
+    
+    return None
+
 def run_final_ablation():
     """
     Run comprehensive ablation study with new noise types
@@ -74,7 +143,7 @@ def run_final_ablation():
     print("="*80)
     
     # Configuration
-    num_trials = 1  # Comprehensive testing
+    num_trials = 5  # Comprehensive testing
     noise_level = 0.25
     
     # Load configs
@@ -162,84 +231,49 @@ def run_final_ablation():
                 original_types = noise_model.noise_config['noise_types'].copy()
                 noise_model.noise_config['noise_types'] = noise_types
                 
+                # Prepare arguments for parallel processing
+                trial_args = []
+                for trial in range(num_trials):
+                    args = (trial, test_env, test_id, start, goal, noise_types, 
+                           noise_level, clean_grid, parser, env_config, params)
+                    trial_args.append(args)
+                
+                # Run trials in parallel
+                print(f"Running {num_trials} trials in parallel using {min(num_trials, cpu_count())} workers...")
+                
                 scores = []
                 planning_failures = 0
                 noise_effects = []
                 path_lengths = []
-                # Add metrics storage
                 all_d0 = []
                 all_davg = []
                 all_p0 = []
                 all_waypoints = []
                 all_planning_times = []
                 
-                with tqdm(total=num_trials, desc=f"{label}-{test_env}-t{test_id}") as pbar:
-                    for trial in range(num_trials):
-                        # Add noise
-                        noisy_grid = noise_model.add_realistic_noise(
-                            clean_grid, noise_level, seed=trial + test_id*1000  # Different seed per test ID
-                        )
-                        
-                        # Analyze noise effect
-                        diff_pixels = np.sum(clean_grid != noisy_grid)
-                        obstacles_removed = np.sum((clean_grid == 100) & (noisy_grid == 0))
-                        obstacles_added = np.sum((clean_grid == 0) & (noisy_grid == 100))
-                        
-                        noise_effects.append({
-                            'diff_pixels': diff_pixels,
-                            'diff_ratio': diff_pixels / clean_grid.size,
-                            'obstacles_removed': obstacles_removed,
-                            'obstacles_added': obstacles_added
-                        })
-                        
-                        # Plan path with timing
-                        planner = RRTStarGrid(
-                            start=start,
-                            goal=goal,
-                            occupancy_grid=noisy_grid,
-                            origin=parser.origin,
-                            resolution=parser.resolution,
-                            robot_radius=env_config['robot']['radius'],
-                            step_size=params.get('step_size', 0.8),
-                            max_iter=params.get('max_iterations', 15000),
-                            goal_threshold=params.get('goal_threshold', 0.5),
-                            search_radius=params.get('search_radius', 2.5),
-                            early_termination=True,
-                            seed=trial
-                        )
-                        
-                        # Time the planning
-                        planning_start = time.time()
-                        path = planner.plan()
-                        planning_time = time.time() - planning_start
-                        
-                        if path is not None and len(path) > 0:
-                            # Compute score
-                            score = scorer.compute_nonconformity_score(
-                                clean_grid, noisy_grid, path, parser
-                            )
-                            scores.append(score)
-                            
-                            # Calculate path length
-                            path_length = sum(np.linalg.norm(np.array(path[i+1]) - np.array(path[i])) 
-                                            for i in range(len(path)-1))
-                            path_lengths.append(path_length)
-                            
-                            # Calculate metrics on noisy map (as requested)
-                            metrics = calculate_path_metrics(
-                                path, noisy_grid, parser.origin, 
-                                parser.resolution, env_config['robot']['radius']
-                            )
-                            
-                            all_d0.append(metrics['d_0'])
-                            all_davg.append(metrics['d_avg'])
-                            all_p0.append(metrics['p_0'])
-                            all_waypoints.append(len(path))
-                            all_planning_times.append(planning_time)
-                        else:
-                            planning_failures += 1
-                        
-                        pbar.update(1)
+                # Use multiprocessing Pool
+                with Pool(processes=min(num_trials, cpu_count())) as pool:
+                    # Run all trials in parallel
+                    results = list(tqdm(
+                        pool.imap(run_single_trial, trial_args),
+                        total=num_trials,
+                        desc=f"{label}-{test_env}-t{test_id}"
+                    ))
+                
+                # Process results
+                for result in results:
+                    if result is not None:
+                        score, path_length, metrics, noise_effect, planning_time = result
+                        scores.append(score)
+                        path_lengths.append(path_length)
+                        noise_effects.append(noise_effect)
+                        all_d0.append(metrics['d_0'])
+                        all_davg.append(metrics['d_avg'])
+                        all_p0.append(metrics['p_0'])
+                        all_waypoints.append(metrics['waypoints'])
+                        all_planning_times.append(planning_time)
+                    else:
+                        planning_failures += 1
                 
                 # Restore noise types
                 noise_model.noise_config['noise_types'] = original_types
