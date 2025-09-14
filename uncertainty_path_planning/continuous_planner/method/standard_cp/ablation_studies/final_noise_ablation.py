@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pandas as pd
 import yaml
+import time
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
@@ -24,6 +25,39 @@ from noise_model import NoiseModel
 from nonconformity_scorer import NonconformityScorer
 from mrpb_map_parser import MRPBMapParser
 from rrt_star_grid_planner import RRTStarGrid
+sys.path.append('/mnt/ssd1/divake/path_planning/uncertainty_path_planning/continuous_planner')
+from mrpb_metrics import MRPBMetrics, NavigationData, calculate_obstacle_distance
+
+def calculate_path_metrics(path, occupancy_grid, origin, resolution, robot_radius):
+    """
+    Calculate path metrics (d0, davg, p0) for a given path on the occupancy grid
+    """
+    if not path or len(path) < 2:
+        return {'d_0': 0, 'd_avg': 0, 'p_0': 0}
+    
+    # Calculate distances to obstacles for each waypoint
+    distances = []
+    danger_count = 0
+    safe_distance = 0.3  # meters
+    
+    for point in path:
+        # Calculate minimum distance to obstacles
+        min_dist = calculate_obstacle_distance(point, occupancy_grid, origin, resolution)
+        distances.append(min_dist)
+        
+        if min_dist < safe_distance:
+            danger_count += 1
+    
+    # Calculate metrics
+    d_0 = min(distances) if distances else 0  # Initial clearance (minimum)
+    d_avg = np.mean(distances) if distances else 0  # Average clearance
+    p_0 = (danger_count / len(path)) * 100 if path else 0  # Percentage in danger zone
+    
+    return {
+        'd_0': d_0,
+        'd_avg': d_avg,
+        'p_0': p_0
+    }
 
 def run_final_ablation():
     """
@@ -132,6 +166,12 @@ def run_final_ablation():
                 planning_failures = 0
                 noise_effects = []
                 path_lengths = []
+                # Add metrics storage
+                all_d0 = []
+                all_davg = []
+                all_p0 = []
+                all_waypoints = []
+                all_planning_times = []
                 
                 with tqdm(total=num_trials, desc=f"{label}-{test_env}-t{test_id}") as pbar:
                     for trial in range(num_trials):
@@ -152,7 +192,7 @@ def run_final_ablation():
                             'obstacles_added': obstacles_added
                         })
                         
-                        # Plan path
+                        # Plan path with timing
                         planner = RRTStarGrid(
                             start=start,
                             goal=goal,
@@ -168,7 +208,10 @@ def run_final_ablation():
                             seed=trial
                         )
                         
+                        # Time the planning
+                        planning_start = time.time()
                         path = planner.plan()
+                        planning_time = time.time() - planning_start
                         
                         if path is not None and len(path) > 0:
                             # Compute score
@@ -181,6 +224,18 @@ def run_final_ablation():
                             path_length = sum(np.linalg.norm(np.array(path[i+1]) - np.array(path[i])) 
                                             for i in range(len(path)-1))
                             path_lengths.append(path_length)
+                            
+                            # Calculate metrics on noisy map (as requested)
+                            metrics = calculate_path_metrics(
+                                path, noisy_grid, parser.origin, 
+                                parser.resolution, env_config['robot']['radius']
+                            )
+                            
+                            all_d0.append(metrics['d_0'])
+                            all_davg.append(metrics['d_avg'])
+                            all_p0.append(metrics['p_0'])
+                            all_waypoints.append(len(path))
+                            all_planning_times.append(planning_time)
                         else:
                             planning_failures += 1
                         
@@ -219,6 +274,18 @@ def run_final_ablation():
                             'mean': float(np.mean(path_lengths)) if path_lengths else 0,
                             'std': float(np.std(path_lengths)) if path_lengths else 0
                         },
+                        'metrics': {
+                            'd_0': {'mean': float(np.mean(all_d0)) if all_d0 else 0,
+                                   'std': float(np.std(all_d0)) if all_d0 else 0},
+                            'd_avg': {'mean': float(np.mean(all_davg)) if all_davg else 0,
+                                     'std': float(np.std(all_davg)) if all_davg else 0},
+                            'p_0': {'mean': float(np.mean(all_p0)) if all_p0 else 0,
+                                   'std': float(np.std(all_p0)) if all_p0 else 0},
+                            'waypoints': {'mean': float(np.mean(all_waypoints)) if all_waypoints else 0,
+                                         'std': float(np.std(all_waypoints)) if all_waypoints else 0},
+                            'time': {'mean': float(np.mean(all_planning_times)) if all_planning_times else 0,
+                                    'std': float(np.std(all_planning_times)) if all_planning_times else 0}
+                        },
                         'noise_effects': {
                             'mean_diff_ratio': np.mean([e['diff_ratio'] for e in noise_effects]),
                             'mean_obstacles_removed': np.mean([e['obstacles_removed'] for e in noise_effects]),
@@ -251,11 +318,16 @@ def run_final_ablation():
     # Create aggregated results across all environments
     aggregated_results = aggregate_results_across_envs(all_env_results)
     
+    # Get timestamp for saving files
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    
     # Create comprehensive visualization
     create_comprehensive_visualization(aggregated_results, all_env_scores)
     
+    # Create metrics table visualization
+    create_metrics_table_visualization(all_env_results, timestamp)
+    
     # Save results
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     results_dir = Path('results/final_ablation_all_tests')
     results_dir.mkdir(parents=True, exist_ok=True)
     
@@ -373,6 +445,97 @@ def save_per_test_results_to_csv(all_test_results, csv_path):
     if rows:
         df = pd.DataFrame(rows)
         df.to_csv(csv_path, index=False)
+
+def create_metrics_table_visualization(all_env_results, timestamp):
+    """
+    Create table visualization showing all metrics for each test
+    """
+    # Prepare data for table
+    table_data = []
+    
+    for test_key, test_results in all_env_results.items():
+        env_name = test_key.rsplit('_test', 1)[0]
+        test_id = test_key.rsplit('_test', 1)[1]
+        
+        for noise_type, data in test_results.items():
+            if 'metrics' in data:
+                metrics = data['metrics']
+                
+                # Format mean ± std for each metric
+                def format_metric(metric_dict):
+                    if isinstance(metric_dict, dict) and 'mean' in metric_dict and 'std' in metric_dict:
+                        mean = metric_dict['mean']
+                        std = metric_dict['std']
+                        if std > 0:
+                            return f"{mean:.2f}±{std:.2f}"
+                        else:
+                            return f"{mean:.2f}"
+                    return "N/A"
+                
+                row_data = [
+                    f"{env_name}-{test_id}",
+                    noise_type.capitalize(),
+                    format_metric(data.get('path_lengths', {})),
+                    format_metric(metrics.get('waypoints', {})),
+                    format_metric(metrics.get('d_0', {})),
+                    format_metric(metrics.get('d_avg', {})),
+                    format_metric(metrics.get('p_0', {})),
+                    format_metric(metrics.get('time', {}))
+                ]
+                table_data.append(row_data)
+    
+    if not table_data:
+        print("No metrics data available for table visualization")
+        return
+    
+    # Create figure for table
+    fig, ax = plt.subplots(figsize=(16, max(8, len(table_data)*0.3)))
+    ax.axis('tight')
+    ax.axis('off')
+    
+    # Column headers
+    col_labels = ['Test', 'Noise Type', 'Path Length (m)', 'Waypoints', 
+                  'd₀ (m)', 'd_avg (m)', 'p₀ (%)', 'T (s)']
+    
+    # Create table
+    table = ax.table(cellText=table_data,
+                     colLabels=col_labels,
+                     cellLoc='center',
+                     loc='center',
+                     colWidths=[0.12, 0.12, 0.13, 0.11, 0.11, 0.11, 0.11, 0.11])
+    
+    # Style the table
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1.2, 1.5)
+    
+    # Color headers
+    for i in range(len(col_labels)):
+        table[(0, i)].set_facecolor('#40466e')
+        table[(0, i)].set_text_props(weight='bold', color='white')
+    
+    # Alternate row colors
+    for i in range(1, len(table_data) + 1):
+        for j in range(len(col_labels)):
+            if i % 2 == 0:
+                table[(i, j)].set_facecolor('#f1f1f2')
+            table[(i, j)].set_text_props(fontsize=8)
+    
+    plt.title('Path Planning Metrics - Standard CP with Different Noise Types', 
+              fontsize=14, fontweight='bold', pad=20)
+    
+    # Save the table
+    results_dir = Path('results/final_ablation_all_tests')
+    results_dir.mkdir(parents=True, exist_ok=True)
+    table_path = results_dir / f'metrics_table_{timestamp}.png'
+    plt.savefig(table_path, dpi=300, bbox_inches='tight')
+    print(f"Metrics table saved to {table_path}")
+    
+    # Also save as CSV for analysis
+    csv_data = pd.DataFrame(table_data, columns=col_labels)
+    csv_path = results_dir / f'metrics_table_{timestamp}.csv'
+    csv_data.to_csv(csv_path, index=False)
+    print(f"Metrics CSV saved to {csv_path}")
 
 def create_comprehensive_visualization(results, all_env_scores):
     """
