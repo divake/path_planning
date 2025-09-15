@@ -18,3 +18,4 @@ PathPlanning/uncertainty_path_planning/continuous_planner/src/plots/standard_cp/
 Visual_odometry.jpg
 .claude
 .idea
+*.pdf

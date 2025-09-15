@@ -170,7 +170,17 @@ def analyze_training_dynamics():
     plt.tight_layout()
     plt.savefig('results/ablations/tau_distributions.png', dpi=150)
     plt.show()
-    
+
+    # Save raw tau values for plotting
+    import json
+    tau_raw_data = {
+        'tau_by_noise': {k: v for k, v in tau_by_noise.items()},
+        'tau_by_env': {k: v for k, v in tau_by_env.items()}
+    }
+    with open('results/ablations/tau_raw_values.json', 'w') as f:
+        json.dump(tau_raw_data, f, indent=2)
+    print("Saved raw tau values to results/ablations/tau_raw_values.json")
+
     # Print statistics
     print("\nTau Statistics by Noise Type:")
     for noise_type, taus in tau_by_noise.items():
@@ -202,6 +212,11 @@ def analyze_training_dynamics():
         score = tau - clearance
         nonconformity_scores.append(score)
     
+    # Save nonconformity scores for plotting
+    with open('results/ablations/nonconformity_scores.json', 'w') as f:
+        json.dump(nonconformity_scores, f)
+    print(f"Saved {len(nonconformity_scores)} nonconformity scores to results/ablations/nonconformity_scores.json")
+
     # Plot nonconformity distribution
     plt.figure(figsize=(10, 6))
     plt.hist(nonconformity_scores, bins=50, alpha=0.7, color='blue', edgecolor='black')
