@@ -124,10 +124,10 @@ class RrtStarFast:
                       f"elapsed: {elapsed:.1f}s, goal reached: {self.goal_reached}")
 
             # Early termination if goal reached and path is good
-            if self.goal_reached and k > 20000:
+            if self.goal_reached and k > 30000:  # Increased minimum iterations
                 if k % 500 == 0:
                     path_cost = self.cost(self.goal_node)
-                    if path_cost < self.step_len * 200:  # Good enough path
+                    if path_cost < self.step_len * 150:  # Stricter quality requirement
                         print(f"Good path found at iteration {k}, cost: {path_cost:.1f}")
                         break
 
@@ -354,7 +354,7 @@ def draw_safety_corridor(ax, path, tau_pixels):
            zorder=3)
 
 
-def draw_path_with_outline(ax, path, lw=1.6):
+def draw_path_with_outline(ax, path, lw=1.0):
     """Draw the main path with white outline"""
     if not path:
         return
@@ -362,7 +362,7 @@ def draw_path_with_outline(ax, path, lw=1.6):
     ys = [p[1] for p in path]
 
     # White outline
-    ax.plot(xs, ys, "-", linewidth=lw+0.8, color="white", alpha=0.95, zorder=4)
+    ax.plot(xs, ys, "-", linewidth=lw+0.6, color="white", alpha=0.95, zorder=4)
     # Red path
     ax.plot(xs, ys, "-", linewidth=lw, color=(0.82, 0.10, 0.10), zorder=5)
 
@@ -411,7 +411,7 @@ def main():
 
     # Standard CP parameters
     STANDARD_CP_RADIUS = 0.17 + 0.32  # Base + tau = 0.49m total
-    TAU = 0.32  # Safety margin in meters
+    TAU = 0.32  # Safety margin in meters - ADJUST THIS VALUE TO CHANGE CORRIDOR WIDTH!
 
     # RRT* parameters - tuned for complete path
     step_len = 12  # Slightly larger steps
@@ -446,7 +446,7 @@ def main():
     draw_map(ax, parser.occupancy_grid, wall_px=2)
 
     # Draw RRT tree (visible but not overwhelming)
-    draw_tree(ax, rrt_star.vertex, lw=0.5, every=1, color=(0.16, 0.60, 0.16, 0.35))
+    draw_tree(ax, rrt_star.vertex, lw=0.6, every=1, color=(0.16, 0.60, 0.16, 0.45))
 
     # Draw safety corridor
     if path:
@@ -454,7 +454,7 @@ def main():
         draw_safety_corridor(ax, path, tau_pixels)
 
     # Draw path
-    draw_path_with_outline(ax, path, lw=1.6)
+    draw_path_with_outline(ax, path, lw=0.8)  # Thinner red path
 
     # Draw start and goal
     draw_start_goal(ax, x_start, x_goal, s=6.0)
