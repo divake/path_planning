@@ -358,12 +358,8 @@ def draw_adaptive_safety_corridor(ax, path, rrt_planner):
         perp_y = dx / length * dist
         return (perp_x, perp_y)
 
-    # Build adaptive boundaries
-    left_boundaries = {0.1: [], 0.2: [], 0.35: []}
-    right_boundaries = {0.1: [], 0.2: [], 0.35: []}
-    colors = {0.1: (0.6, 0.8, 0.6, 0.25),   # Light green for safe areas
-              0.2: (0.8, 0.8, 0.4, 0.25),   # Yellow for medium
-              0.3: (0.8, 0.6, 0.6, 0.25)}    # Light red for dangerous (updated to 0.3)
+    # Use same light grey as Standard CP for all segments
+    corridor_color = (0.7, 0.7, 0.7, 0.2)  # Light grey, semi-transparent
 
     # Create segments based on tau values
     segments = []
@@ -406,42 +402,31 @@ def draw_adaptive_safety_corridor(ax, path, rrt_planner):
             left_boundary.append((segment[i][0] + perp[0], segment[i][1] + perp[1]))
             right_boundary.append((segment[i][0] - perp[0], segment[i][1] - perp[1]))
 
-        # Draw this segment's corridor
+        # Draw this segment's corridor with same style as Standard CP
         corridor_vertices = left_boundary + right_boundary[::-1]
 
-        # Use color based on tau value
-        color = colors.get(tau, (0.7, 0.7, 0.7, 0.2))
-
         corridor_poly = Polygon(corridor_vertices,
-                               facecolor=color,
+                               facecolor=corridor_color,
                                edgecolor='none',
                                zorder=3)
         ax.add_patch(corridor_poly)
 
-        # Draw boundaries
+        # Draw boundaries - same as Standard CP (thin solid lines)
         left_array = np.array(left_boundary)
         right_array = np.array(right_boundary)
 
-        # Boundary colors based on tau
-        if tau >= 0.25:  # Dangerous - red boundaries (updated threshold)
-            boundary_color = (0.8, 0.2, 0.2, 0.7)
-        elif tau >= 0.15:  # Medium - orange boundaries
-            boundary_color = (0.8, 0.5, 0.2, 0.7)
-        else:  # Safe - green boundaries
-            boundary_color = (0.2, 0.6, 0.2, 0.7)
-
-        # Upper boundary
+        # Upper boundary - blue (same as Standard CP)
         ax.plot(left_array[:, 0], left_array[:, 1],
-               color=boundary_color,
-               linewidth=0.5,
-               linestyle='-',
+               color=(0.2, 0.3, 0.8, 0.8),  # Blue, solid
+               linewidth=0.6,  # Same as Standard CP
+               linestyle='-',  # Solid line
                zorder=3)
 
-        # Lower boundary
+        # Lower boundary - black (same as Standard CP)
         ax.plot(right_array[:, 0], right_array[:, 1],
-               color=boundary_color,
-               linewidth=0.5,
-               linestyle='-',
+               color=(0.0, 0.0, 0.0, 0.8),  # Black, solid
+               linewidth=0.6,  # Same as Standard CP
+               linestyle='-',  # Solid line
                zorder=3)
 
 
@@ -569,15 +554,6 @@ def main():
 
     # Add axis labels
     add_axes_labels(ax, parser.occupancy_grid.shape, parser.resolution, parser.origin)
-
-    # Add legend for adaptive tau
-    from matplotlib.patches import Patch
-    legend_elements = [
-        Patch(facecolor=(0.6, 0.8, 0.6, 0.5), label='τ=0.10m (Safe)'),
-        Patch(facecolor=(0.8, 0.8, 0.4, 0.5), label='τ=0.20m (Medium)'),
-        Patch(facecolor=(0.8, 0.6, 0.6, 0.5), label='τ=0.30m (Dangerous)')
-    ]
-    ax.legend(handles=legend_elements, loc='upper right', fontsize=8, framealpha=0.8)
 
     # Save figure
     output_file = "learnable_cp/rrt_star_learnable_cp"
