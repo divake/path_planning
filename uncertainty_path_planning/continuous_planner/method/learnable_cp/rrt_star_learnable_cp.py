@@ -103,13 +103,19 @@ class RrtStarLearnableCP:
         # Convert to meters (subtract robot base radius)
         dist_meters = (dist_pixels * self.resolution) - self.base_radius
 
-        # Three-level adaptive tau based on clearance
-        if dist_meters <= 0.5:  # Very close to obstacle (within 50cm clearance)
-            tau = 0.30  # Maximum safety margin (reduced from 0.35)
-        elif dist_meters <= 1.5:  # Medium distance (50cm to 1.5m clearance)
-            tau = 0.20  # Medium safety margin
-        else:  # Far from obstacles (>1.5m clearance)
-            tau = 0.10  # Minimum safety margin
+        # Adaptive tau with smooth transition - more dramatic
+        if dist_meters <= 0.3:  # Very close to obstacle (within 30cm clearance)
+            tau = 0.35  # Maximum safety margin for danger zones
+        elif dist_meters <= 0.6:  # Close to obstacle (30cm to 60cm clearance)
+            # Smooth transition from 0.35 to 0.20
+            ratio = (dist_meters - 0.3) / 0.3
+            tau = 0.35 - ratio * 0.15  # Linear interpolation
+        elif dist_meters <= 1.0:  # Medium distance (60cm to 1m clearance)
+            # Smooth transition from 0.20 to 0.05
+            ratio = (dist_meters - 0.6) / 0.4
+            tau = 0.20 - ratio * 0.15
+        else:  # Far from obstacles (>1m clearance) - clear open areas
+            tau = 0.05  # Nearly zero margin (5cm only) for maximum efficiency
 
         return tau
 
@@ -479,7 +485,7 @@ def main():
     # Run RRT*
     print(f"\nRunning Learnable CP RRT* with adaptive safety margins...")
     print(f"  Base radius: {BASE_RADIUS:.2f}m")
-    print(f"  Adaptive tau: 0.10m (safe), 0.20m (medium), 0.30m (dangerous)")
+    print(f"  Adaptive tau: 0.05m (clear/open), 0.15-0.35m (transition), 0.35m (near obstacles)")
 
     rrt_star = RrtStarLearnableCP(x_start, x_goal, step_len, goal_sample_rate,
                                   search_radius, iter_max, parser.occupancy_grid,
@@ -494,20 +500,23 @@ def main():
 
     # Calculate tau statistics along path
     if path:
-        tau_stats = {0.1: 0, 0.2: 0, 0.3: 0}
+        tau_stats = {'clear': 0, 'transition': 0, 'dangerous': 0}
+        tau_values = []
         for point in path:
             tau = rrt_star.get_adaptive_tau(point[0], point[1])
-            if tau <= 0.15:
-                tau_stats[0.1] += 1
-            elif tau <= 0.25:
-                tau_stats[0.2] += 1
+            tau_values.append(tau)
+            if tau <= 0.08:
+                tau_stats['clear'] += 1
+            elif tau <= 0.30:
+                tau_stats['transition'] += 1
             else:
-                tau_stats[0.3] += 1
+                tau_stats['dangerous'] += 1
 
         print(f"\nAdaptive tau distribution along path:")
-        print(f"  Safe (τ=0.10m): {tau_stats[0.1]} waypoints ({100*tau_stats[0.1]/waypoints:.1f}%)")
-        print(f"  Medium (τ=0.20m): {tau_stats[0.2]} waypoints ({100*tau_stats[0.2]/waypoints:.1f}%)")
-        print(f"  Dangerous (τ=0.30m): {tau_stats[0.3]} waypoints ({100*tau_stats[0.3]/waypoints:.1f}%)")
+        print(f"  Clear/Open (τ≈0.05m): {tau_stats['clear']} waypoints ({100*tau_stats['clear']/waypoints:.1f}%)")
+        print(f"  Transition (τ=0.10-0.30m): {tau_stats['transition']} waypoints ({100*tau_stats['transition']/waypoints:.1f}%)")
+        print(f"  Near obstacles (τ=0.35m): {tau_stats['dangerous']} waypoints ({100*tau_stats['dangerous']/waypoints:.1f}%)")
+        print(f"  Min tau: {min(tau_values):.3f}m, Max tau: {max(tau_values):.3f}m")
 
     print(f"\nResults:")
     print(f"  Nodes explored: {nodes_explored}")
