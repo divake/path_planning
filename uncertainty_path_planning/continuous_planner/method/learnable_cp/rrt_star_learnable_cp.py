@@ -339,7 +339,7 @@ def draw_adaptive_safety_corridor(ax, path, rrt_planner):
         p1 = path[i]
         p2 = path[i + 1]
         dist = math.hypot(p2[0] - p1[0], p2[1] - p1[1])
-        steps = max(int(dist / 5), 2)  # Sample every 5 pixels
+        steps = max(int(dist / 3), 3)  # More samples for smoother curve
 
         for j in range(steps):
             t = j / float(steps)
@@ -358,76 +358,58 @@ def draw_adaptive_safety_corridor(ax, path, rrt_planner):
         perp_y = dx / length * dist
         return (perp_x, perp_y)
 
-    # Use same light grey as Standard CP for all segments
+    # Use same light grey as Standard CP
     corridor_color = (0.7, 0.7, 0.7, 0.2)  # Light grey, semi-transparent
 
-    # Create segments based on tau values
-    segments = []
-    current_segment = []
-    current_tau = None
+    # Build continuous adaptive boundaries (no segments)
+    left_boundary = []
+    right_boundary = []
 
-    for i, point in enumerate(sampled_path):
+    for i in range(len(sampled_path)):
+        point = sampled_path[i]
+
+        # Get adaptive tau at this point
         tau_meters = rrt_planner.get_adaptive_tau(point[0], point[1])
+        tau_pixels = int(tau_meters / rrt_planner.resolution)
 
-        if current_tau != tau_meters:
-            if current_segment:
-                segments.append((current_tau, current_segment))
-            current_segment = [point]
-            current_tau = tau_meters
+        # Calculate perpendicular direction
+        if i == 0 and len(sampled_path) > 1:
+            perp = get_perpendicular(sampled_path[0], sampled_path[1], tau_pixels)
+        elif i == len(sampled_path) - 1:
+            perp = get_perpendicular(sampled_path[-2], sampled_path[-1], tau_pixels)
         else:
-            current_segment.append(point)
+            perp1 = get_perpendicular(sampled_path[i-1], sampled_path[i], tau_pixels)
+            perp2 = get_perpendicular(sampled_path[i], sampled_path[i+1], tau_pixels)
+            perp = ((perp1[0] + perp2[0])/2, (perp1[1] + perp2[1])/2)
 
-    if current_segment:
-        segments.append((current_tau, current_segment))
+        left_boundary.append((point[0] + perp[0], point[1] + perp[1]))
+        right_boundary.append((point[0] - perp[0], point[1] - perp[1]))
 
-    # Draw each segment with its corresponding tau
-    for tau, segment in segments:
-        if len(segment) < 2:
-            continue
+    # Draw the entire corridor as one polygon
+    corridor_vertices = left_boundary + right_boundary[::-1]
+    corridor_poly = Polygon(corridor_vertices,
+                           facecolor=corridor_color,
+                           edgecolor='none',
+                           zorder=3)
+    ax.add_patch(corridor_poly)
 
-        tau_pixels = int(tau / rrt_planner.resolution)
-        left_boundary = []
-        right_boundary = []
+    # Draw continuous boundaries (not segmented)
+    left_array = np.array(left_boundary)
+    right_array = np.array(right_boundary)
 
-        for i in range(len(segment)):
-            if i == 0 and len(segment) > 1:
-                perp = get_perpendicular(segment[0], segment[1], tau_pixels)
-            elif i == len(segment) - 1:
-                perp = get_perpendicular(segment[-2], segment[-1], tau_pixels)
-            else:
-                perp1 = get_perpendicular(segment[i-1], segment[i], tau_pixels)
-                perp2 = get_perpendicular(segment[i], segment[i+1], tau_pixels)
-                perp = ((perp1[0] + perp2[0])/2, (perp1[1] + perp2[1])/2)
+    # Upper boundary - blue (continuous line)
+    ax.plot(left_array[:, 0], left_array[:, 1],
+           color=(0.2, 0.3, 0.8, 0.8),  # Blue, solid
+           linewidth=0.6,  # Same as Standard CP
+           linestyle='-',  # Solid line
+           zorder=3)
 
-            left_boundary.append((segment[i][0] + perp[0], segment[i][1] + perp[1]))
-            right_boundary.append((segment[i][0] - perp[0], segment[i][1] - perp[1]))
-
-        # Draw this segment's corridor with same style as Standard CP
-        corridor_vertices = left_boundary + right_boundary[::-1]
-
-        corridor_poly = Polygon(corridor_vertices,
-                               facecolor=corridor_color,
-                               edgecolor='none',
-                               zorder=3)
-        ax.add_patch(corridor_poly)
-
-        # Draw boundaries - same as Standard CP (thin solid lines)
-        left_array = np.array(left_boundary)
-        right_array = np.array(right_boundary)
-
-        # Upper boundary - blue (same as Standard CP)
-        ax.plot(left_array[:, 0], left_array[:, 1],
-               color=(0.2, 0.3, 0.8, 0.8),  # Blue, solid
-               linewidth=0.6,  # Same as Standard CP
-               linestyle='-',  # Solid line
-               zorder=3)
-
-        # Lower boundary - black (same as Standard CP)
-        ax.plot(right_array[:, 0], right_array[:, 1],
-               color=(0.0, 0.0, 0.0, 0.8),  # Black, solid
-               linewidth=0.6,  # Same as Standard CP
-               linestyle='-',  # Solid line
-               zorder=3)
+    # Lower boundary - black (continuous line)
+    ax.plot(right_array[:, 0], right_array[:, 1],
+           color=(0.0, 0.0, 0.0, 0.8),  # Black, solid
+           linewidth=0.6,  # Same as Standard CP
+           linestyle='-',  # Solid line
+           zorder=3)
 
 
 def draw_path_with_outline(ax, path, lw=0.8):
