@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Optimized RRT* for Standard CP with proper path extraction and parallel sampling
+Fast RRT* for Standard CP with optimized collision checking
 """
 
 import os
@@ -8,13 +8,14 @@ import sys
 import math
 import numpy as np
 import yaml
-from multiprocessing import Pool, cpu_count
 import time
+import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 
 sys.path.append('..')
 sys.path.append('../..')
 from mrpb_map_parser import MRPBMapParser
-from pretty_plot import render_rrt_figure
+from pretty_plot import set_pub_style, make_fig, draw_map, draw_tree, draw_start_goal, add_axes_labels, save_fig
 
 
 class Node:
@@ -24,61 +25,9 @@ class Node:
         self.parent = None
 
 
-class MRPBEnv:
-    """Environment from MRPB map"""
-    def __init__(self, occupancy_grid, resolution):
-        self.occupancy_grid = occupancy_grid
-        self.resolution = resolution
-        self.x_range = (0, occupancy_grid.shape[1])
-        self.y_range = (0, occupancy_grid.shape[0])
-
-
-class UtilsMRPB:
-    """Utils for collision checking on MRPB maps"""
-    def __init__(self, occupancy_grid, robot_radius=0.17, resolution=0.05):
-        self.occupancy_grid = occupancy_grid
-        self.robot_radius = robot_radius
-        self.resolution = resolution
-        self.robot_radius_pixels = int(robot_radius / resolution)
-        self.delta = self.robot_radius_pixels
-
-    def is_collision(self, node1, node2):
-        """Check collision between two nodes"""
-        dist = math.hypot(node2.x - node1.x, node2.y - node1.y)
-        steps = max(int(dist / 2), 1)  # Check every 2 pixels
-
-        for i in range(steps + 1):
-            t = i / float(steps)
-            x = int(node1.x + t * (node2.x - node1.x))
-            y = int(node1.y + t * (node2.y - node1.y))
-
-            if not self.is_inside(x, y):
-                return True
-
-        return False
-
-    def is_inside(self, x, y):
-        """Check if point is collision-free"""
-        if (x - self.robot_radius_pixels < 0 or
-            x + self.robot_radius_pixels >= self.occupancy_grid.shape[1] or
-            y - self.robot_radius_pixels < 0 or
-            y + self.robot_radius_pixels >= self.occupancy_grid.shape[0]):
-            return False
-
-        for dx in range(-self.robot_radius_pixels, self.robot_radius_pixels + 1):
-            for dy in range(-self.robot_radius_pixels, self.robot_radius_pixels + 1):
-                if dx*dx + dy*dy <= self.robot_radius_pixels * self.robot_radius_pixels:
-                    check_x = x + dx
-                    check_y = y + dy
-                    if self.occupancy_grid[check_y, check_x] > 50:
-                        return False
-
-        return True
-
-
-class RrtStarOptimized:
+class RrtStarFast:
     def __init__(self, x_start, x_goal, step_len, goal_sample_rate,
-                 search_radius, iter_max, env, utils):
+                 search_radius, iter_max, occupancy_grid, robot_radius, resolution):
         self.s_start = Node(x_start)
         self.s_goal = Node(x_goal)
         self.step_len = step_len
@@ -88,31 +37,112 @@ class RrtStarOptimized:
         self.vertex = [self.s_start]
         self.path = []
 
-        self.env = env
-        self.utils = utils
-        self.x_range = self.env.x_range
-        self.y_range = self.env.y_range
+        self.occupancy_grid = occupancy_grid
+        self.robot_radius_pixels = int(robot_radius / resolution)
+        self.x_range = (0, occupancy_grid.shape[1])
+        self.y_range = (0, occupancy_grid.shape[0])
 
-        # Track if we've reached the goal
         self.goal_reached = False
         self.goal_node = None
 
+        # Pre-compute collision map with dilation for robot radius
+        print("Pre-computing collision map...")
+        self.collision_map = self.compute_collision_map()
+
+    def compute_collision_map(self):
+        """Pre-compute dilated obstacle map for fast collision checking"""
+        # Create binary obstacle map
+        obstacles = (self.occupancy_grid > 50).astype(np.uint8)
+
+        # Dilate obstacles by robot radius using circular kernel
+        from scipy.ndimage import binary_dilation
+
+        # Create circular structuring element
+        y, x = np.ogrid[-self.robot_radius_pixels:self.robot_radius_pixels+1,
+                        -self.robot_radius_pixels:self.robot_radius_pixels+1]
+        kernel = x**2 + y**2 <= self.robot_radius_pixels**2
+
+        # Dilate obstacles
+        dilated = binary_dilation(obstacles, structure=kernel)
+
+        return dilated
+
+    def is_collision(self, node1, node2):
+        """Fast collision check using pre-computed map"""
+        x1, y1 = int(node1.x), int(node1.y)
+        x2, y2 = int(node2.x), int(node2.y)
+
+        # Bresenham's line algorithm for fast line checking
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        sx = 1 if x1 < x2 else -1
+        sy = 1 if y1 < y2 else -1
+        err = dx - dy
+
+        x, y = x1, y1
+
+        while True:
+            # Check bounds and collision
+            if (x < 0 or x >= self.collision_map.shape[1] or
+                y < 0 or y >= self.collision_map.shape[0] or
+                self.collision_map[y, x]):
+                return True
+
+            if x == x2 and y == y2:
+                break
+
+            e2 = 2 * err
+            if e2 > -dy:
+                err -= dy
+                x += sx
+            if e2 < dx:
+                err += dx
+                y += sy
+
+        return False
+
+    def is_inside(self, x, y):
+        """Fast point collision check"""
+        x, y = int(x), int(y)
+        if (x < 0 or x >= self.collision_map.shape[1] or
+            y < 0 or y >= self.collision_map.shape[0]):
+            return False
+        return not self.collision_map[y, x]
+
     def planning(self):
-        """Main RRT* planning loop with proper termination"""
-        print(f"Starting RRT* with max {self.iter_max} iterations...")
+        """Optimized RRT* planning"""
         start_time = time.time()
 
-        for k in range(self.iter_max):
-            node_rand = self.generate_random_node(self.goal_sample_rate)
-            node_near = self.nearest_neighbor(self.vertex, node_rand)
-            node_new = self.new_state(node_near, node_rand)
+        # Pre-allocate arrays for batch operations
+        vertex_array = np.array([[self.s_start.x, self.s_start.y]])
 
-            if k % 5000 == 0:
+        for k in range(self.iter_max):
+            # Progress update
+            if k % 2500 == 0:
                 elapsed = time.time() - start_time
                 print(f"Iteration {k}/{self.iter_max}, tree size: {len(self.vertex)}, "
                       f"elapsed: {elapsed:.1f}s, goal reached: {self.goal_reached}")
 
-            if node_new and not self.utils.is_collision(node_near, node_new):
+            # Early termination if goal reached and path is good
+            if self.goal_reached and k > 20000:
+                if k % 500 == 0:
+                    path_cost = self.cost(self.goal_node)
+                    if path_cost < self.step_len * 200:  # Good enough path
+                        print(f"Good path found at iteration {k}, cost: {path_cost:.1f}")
+                        break
+
+            # Generate random node
+            node_rand = self.generate_random_node()
+
+            # Find nearest using vectorized operations
+            if len(self.vertex) > 100 and k % 10 == 0:
+                # Batch nearest neighbor for efficiency
+                vertex_array = np.array([[n.x, n.y] for n in self.vertex])
+
+            node_near = self.nearest_neighbor_fast(node_rand, vertex_array if len(self.vertex) > 100 else None)
+            node_new = self.new_state(node_near, node_rand)
+
+            if node_new and not self.is_collision(node_near, node_new):
                 neighbor_index = self.find_near_neighbor(node_new)
                 self.vertex.append(node_new)
 
@@ -120,58 +150,55 @@ class RrtStarOptimized:
                     self.choose_parent(node_new, neighbor_index)
                     self.rewire(node_new, neighbor_index)
 
-                # Check if we reached the goal
+                # Check goal connection
                 if not self.goal_reached:
                     dist_to_goal = math.hypot(node_new.x - self.s_goal.x,
                                             node_new.y - self.s_goal.y)
-                    if dist_to_goal <= self.step_len:
-                        # Check if we can connect to goal
-                        if not self.utils.is_collision(node_new, self.s_goal):
+                    if dist_to_goal <= self.step_len * 1.5:
+                        if not self.is_collision(node_new, self.s_goal):
                             self.goal_reached = True
                             self.goal_node = node_new
                             print(f"GOAL REACHED at iteration {k}!")
-                            # Continue for a bit to optimize the path
-                            if k < self.iter_max - 1000:
-                                self.iter_max = min(k + 1000, self.iter_max)
 
         # Extract path
         if self.goal_reached and self.goal_node:
-            # Build path from goal node
-            self.path = self.extract_path_from_node(self.goal_node)
-            # Add the actual goal
-            self.path.append([self.s_goal.x, self.s_goal.y])
+            self.path = self.extract_path(self.goal_node, True)
         else:
-            # Find closest node to goal and build partial path
-            print("WARNING: Goal not reached, finding closest approach...")
-            closest_idx = self.find_closest_to_goal()
-            if closest_idx >= 0:
-                self.path = self.extract_path_from_node(self.vertex[closest_idx])
+            print("Goal not reached, finding closest approach...")
+            closest_node = self.find_closest_to_goal()
+            self.path = self.extract_path(closest_node, False)
 
         elapsed = time.time() - start_time
         print(f"Planning completed in {elapsed:.1f}s")
         return self.path
 
-    def extract_path_from_node(self, node_end):
-        """Extract path from a specific node to start"""
-        path = []
-        node = node_end
-        while node is not None:
-            path.append([node.x, node.y])
-            node = node.parent
-        return list(reversed(path))
+    def generate_random_node(self):
+        """Biased random sampling"""
+        if np.random.random() > self.goal_sample_rate:
+            # Sample from free space
+            for _ in range(10):  # Try 10 times to find free space
+                x = np.random.uniform(self.x_range[0] + self.robot_radius_pixels,
+                                    self.x_range[1] - self.robot_radius_pixels)
+                y = np.random.uniform(self.y_range[0] + self.robot_radius_pixels,
+                                    self.y_range[1] - self.robot_radius_pixels)
+                if self.is_inside(x, y):
+                    return Node((x, y))
+            # Fallback to any random point
+            x = np.random.uniform(self.x_range[0], self.x_range[1])
+            y = np.random.uniform(self.y_range[0], self.y_range[1])
+            return Node((x, y))
+        return self.s_goal
 
-    def find_closest_to_goal(self):
-        """Find the node closest to goal that has a clear path"""
-        min_dist = float('inf')
-        closest_idx = -1
-
-        for i, node in enumerate(self.vertex):
-            dist = math.hypot(node.x - self.s_goal.x, node.y - self.s_goal.y)
-            if dist < min_dist:
-                min_dist = dist
-                closest_idx = i
-
-        return closest_idx
+    def nearest_neighbor_fast(self, node, vertex_array=None):
+        """Fast nearest neighbor"""
+        if vertex_array is not None and len(vertex_array) > 0:
+            # Vectorized distance computation
+            dists = np.sum((vertex_array - np.array([node.x, node.y]))**2, axis=1)
+            idx = np.argmin(dists)
+            return self.vertex[idx]
+        else:
+            # Fallback to simple method
+            return min(self.vertex, key=lambda n: math.hypot(n.x - node.x, n.y - node.y))
 
     def new_state(self, node_start, node_goal):
         dist, theta = self.get_distance_and_angle(node_start, node_goal)
@@ -181,10 +208,28 @@ class RrtStarOptimized:
         node_new.parent = node_start
         return node_new
 
+    def find_near_neighbor(self, node_new):
+        n = len(self.vertex) + 1
+        r = min(self.search_radius * math.sqrt((math.log(n) / n)), self.step_len * 2)
+
+        neighbors = []
+        for i, nd in enumerate(self.vertex):
+            dist = math.hypot(nd.x - node_new.x, nd.y - node_new.y)
+            if dist <= r and not self.is_collision(node_new, nd):
+                neighbors.append(i)
+
+        return neighbors
+
     def choose_parent(self, node_new, neighbor_index):
-        cost = [self.get_new_cost(self.vertex[i], node_new) for i in neighbor_index]
-        cost_min_index = neighbor_index[int(np.argmin(cost))]
-        node_new.parent = self.vertex[cost_min_index]
+        if not neighbor_index:
+            return
+
+        costs = []
+        for i in neighbor_index:
+            costs.append(self.get_new_cost(self.vertex[i], node_new))
+
+        min_idx = neighbor_index[np.argmin(costs)]
+        node_new.parent = self.vertex[min_idx]
 
     def rewire(self, node_new, neighbor_index):
         for i in neighbor_index:
@@ -192,30 +237,43 @@ class RrtStarOptimized:
             if self.cost(node_neighbor) > self.get_new_cost(node_new, node_neighbor):
                 node_neighbor.parent = node_new
 
+    def find_closest_to_goal(self):
+        """Find node closest to goal that can connect"""
+        best_node = None
+        best_cost = float('inf')
+
+        for node in self.vertex:
+            dist = math.hypot(node.x - self.s_goal.x, node.y - self.s_goal.y)
+            if dist < best_cost:
+                if not self.is_collision(node, self.s_goal):
+                    best_cost = dist
+                    best_node = node
+
+        if best_node is None:
+            # Just return closest node
+            best_node = min(self.vertex, key=lambda n: math.hypot(n.x - self.s_goal.x, n.y - self.s_goal.y))
+
+        return best_node
+
+    def extract_path(self, node_end, include_goal):
+        """Extract path from node to start"""
+        path = []
+
+        # Add goal if we reached it
+        if include_goal:
+            path.append([self.s_goal.x, self.s_goal.y])
+
+        # Build path from node to start
+        node = node_end
+        while node:
+            path.append([node.x, node.y])
+            node = node.parent
+
+        return path
+
     def get_new_cost(self, node_start, node_end):
         dist, _ = self.get_distance_and_angle(node_start, node_end)
         return self.cost(node_start) + dist
-
-    def generate_random_node(self, goal_sample_rate):
-        delta = self.utils.delta
-        if np.random.random() > goal_sample_rate:
-            x = np.random.uniform(self.x_range[0] + delta, self.x_range[1] - delta)
-            y = np.random.uniform(self.y_range[0] + delta, self.y_range[1] - delta)
-            return Node((x, y))
-        return self.s_goal
-
-    def find_near_neighbor(self, node_new):
-        n = len(self.vertex) + 1
-        r = min(self.search_radius * math.sqrt((math.log(n) / n)), self.step_len)
-        dist_table = [math.hypot(nd.x - node_new.x, nd.y - node_new.y) for nd in self.vertex]
-        dist_table_index = [ind for ind in range(len(dist_table)) if dist_table[ind] <= r and
-                           not self.utils.is_collision(node_new, self.vertex[ind])]
-        return dist_table_index
-
-    @staticmethod
-    def nearest_neighbor(node_list, n):
-        return node_list[int(np.argmin([math.hypot(nd.x - n.x, nd.y - n.y)
-                                       for nd in node_list]))]
 
     @staticmethod
     def cost(node_p):
@@ -233,6 +291,82 @@ class RrtStarOptimized:
         return math.hypot(dx, dy), math.atan2(dy, dx)
 
 
+def draw_safety_corridor(ax, path, tau_pixels):
+    """Draw safety corridor around path"""
+    if not path or len(path) < 2:
+        return
+
+    def get_perpendicular(p1, p2, dist):
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        length = math.sqrt(dx**2 + dy**2)
+        if length == 0:
+            return (0, 0)
+        perp_x = -dy / length * dist
+        perp_y = dx / length * dist
+        return (perp_x, perp_y)
+
+    left_boundary = []
+    right_boundary = []
+
+    for i in range(len(path)):
+        if i == 0:
+            if len(path) > 1:
+                perp = get_perpendicular(path[0], path[1], tau_pixels)
+            else:
+                perp = (0, 0)
+        elif i == len(path) - 1:
+            perp = get_perpendicular(path[-2], path[-1], tau_pixels)
+        else:
+            perp1 = get_perpendicular(path[i-1], path[i], tau_pixels)
+            perp2 = get_perpendicular(path[i], path[i+1], tau_pixels)
+            perp = ((perp1[0] + perp2[0])/2, (perp1[1] + perp2[1])/2)
+
+        left_boundary.append((path[i][0] + perp[0], path[i][1] + perp[1]))
+        right_boundary.append((path[i][0] - perp[0], path[i][1] - perp[1]))
+
+    # Create polygon vertices
+    corridor_vertices = left_boundary + right_boundary[::-1]
+
+    # Draw shaded corridor - light grey
+    corridor_poly = Polygon(corridor_vertices,
+                           facecolor=(0.7, 0.7, 0.7, 0.2),
+                           edgecolor='none',
+                           zorder=3)
+    ax.add_patch(corridor_poly)
+
+    # Draw boundaries - thin solid lines
+    left_array = np.array(left_boundary)
+    right_array = np.array(right_boundary)
+
+    # Upper boundary - blue
+    ax.plot(left_array[:, 0], left_array[:, 1],
+           color=(0.2, 0.3, 0.8, 0.8),
+           linewidth=0.6,
+           linestyle='-',
+           zorder=3)
+
+    # Lower boundary - black
+    ax.plot(right_array[:, 0], right_array[:, 1],
+           color=(0.0, 0.0, 0.0, 0.8),
+           linewidth=0.6,
+           linestyle='-',
+           zorder=3)
+
+
+def draw_path_with_outline(ax, path, lw=1.6):
+    """Draw the main path with white outline"""
+    if not path:
+        return
+    xs = [p[0] for p in path]
+    ys = [p[1] for p in path]
+
+    # White outline
+    ax.plot(xs, ys, "-", linewidth=lw+0.8, color="white", alpha=0.95, zorder=4)
+    # Red path
+    ax.plot(xs, ys, "-", linewidth=lw, color=(0.82, 0.10, 0.10), zorder=5)
+
+
 def compute_path_length(path, resolution):
     """Compute path length in meters"""
     if len(path) < 2:
@@ -245,7 +379,7 @@ def compute_path_length(path, resolution):
 
 
 def main():
-    """Run optimized Standard CP RRT*"""
+    """Run fast Standard CP RRT*"""
 
     # Load MRPB map
     print("Loading MRPB map...")
@@ -253,11 +387,11 @@ def main():
     with open(os.path.join(config_dir, 'config_env.yaml'), 'r') as f:
         env_config = yaml.safe_load(f)
 
-    env_name = 'shopping_mall'  # Use shopping_mall which works
+    env_name = 'shopping_mall'
     dataset_path = '../mrpb_dataset'
     parser = MRPBMapParser(env_name, dataset_path)
 
-    # Get test points and convert to pixels
+    # Get test points
     env_tests = env_config['environments'][env_name]['tests']
     test_config = env_tests[0]
 
@@ -277,58 +411,63 @@ def main():
 
     # Standard CP parameters
     STANDARD_CP_RADIUS = 0.17 + 0.32  # Base + tau = 0.49m total
+    TAU = 0.32  # Safety margin in meters
 
-    # Create environment and utils
-    env = MRPBEnv(parser.occupancy_grid, parser.resolution)
-    utils = UtilsMRPB(parser.occupancy_grid, robot_radius=STANDARD_CP_RADIUS, resolution=parser.resolution)
-
-    # RRT* parameters - more iterations for complete path
-    step_len = 10  # pixels
-    goal_sample_rate = 0.10  # 10% goal bias
-    search_radius = 30  # pixels
-    iter_max = 50000  # Much more iterations
+    # RRT* parameters - tuned for complete path
+    step_len = 12  # Slightly larger steps
+    goal_sample_rate = 0.20  # 20% goal bias for faster convergence
+    search_radius = 35  # pixels
+    iter_max = 50000  # More iterations to ensure 100% completion
 
     # Run RRT*
-    print(f"\nRunning Optimized RRT* (Standard CP with r={STANDARD_CP_RADIUS:.2f}m)...")
-    print(f"Using {cpu_count()} CPU cores available")
+    print(f"\nRunning Fast RRT* (Standard CP with r={STANDARD_CP_RADIUS:.2f}m)...")
 
-    rrt_star = RrtStarOptimized(x_start, x_goal, step_len, goal_sample_rate,
-                                search_radius, iter_max, env, utils)
+    rrt_star = RrtStarFast(x_start, x_goal, step_len, goal_sample_rate,
+                           search_radius, iter_max, parser.occupancy_grid,
+                           STANDARD_CP_RADIUS, parser.resolution)
 
     path = rrt_star.planning()
 
-    # Calculate statistics
+    # Statistics
     nodes_explored = len(rrt_star.vertex)
     waypoints = len(path) if path else 0
     path_length_m = compute_path_length(path, parser.resolution) if path else 0
 
-    print(f"\nTree exploration: {nodes_explored} nodes explored")
+    print(f"\nResults:")
+    print(f"  Nodes explored: {nodes_explored}")
+    print(f"  Path waypoints: {waypoints}")
+    print(f"  Path length: {path_length_m:.2f} meters")
+    print(f"  Status: {'COMPLETE PATH' if rrt_star.goal_reached else 'PARTIAL PATH'}")
 
-    if waypoints > 2 and rrt_star.goal_reached:
-        print(f"SUCCESS! Complete path found: {waypoints} waypoints, length: {path_length_m:.2f} meters")
-    elif waypoints > 2:
-        print(f"PARTIAL path found: {waypoints} waypoints, length: {path_length_m:.2f} meters")
-        print("Path ends at closest reachable point to goal")
-    else:
-        print(f"FAILED: No valid path found")
-        return
+    # Create visualization
+    fig, ax = make_fig(size="single")
 
-    # Render visualization
-    render_rrt_figure(
-        occupancy_grid=parser.occupancy_grid,
-        start=x_start,
-        goal=x_goal,
-        nodes=rrt_star.vertex,
-        path=path,
-        size="single",
-        wall_px=2,
-        show_tree=True,
-        out_base=f"standard_cp/rrt_star_standard_cp_optimized",
-        resolution=parser.resolution,
-        origin=parser.origin
-    )
+    # Draw map
+    draw_map(ax, parser.occupancy_grid, wall_px=2)
 
-    print("\nVisualization saved to standard_cp/")
+    # Draw RRT tree (visible but not overwhelming)
+    draw_tree(ax, rrt_star.vertex, lw=0.5, every=1, color=(0.16, 0.60, 0.16, 0.35))
+
+    # Draw safety corridor
+    if path:
+        tau_pixels = int(TAU / parser.resolution)
+        draw_safety_corridor(ax, path, tau_pixels)
+
+    # Draw path
+    draw_path_with_outline(ax, path, lw=1.6)
+
+    # Draw start and goal
+    draw_start_goal(ax, x_start, x_goal, s=6.0)
+
+    # Add axis labels
+    add_axes_labels(ax, parser.occupancy_grid.shape, parser.resolution, parser.origin)
+
+    # Save figure
+    output_file = "standard_cp/rrt_star_standard_cp_final"
+    save_fig(fig, output_file)
+    plt.close(fig)
+
+    print(f"\nVisualization saved to {output_file}")
 
 
 if __name__ == '__main__':
