@@ -10,14 +10,14 @@ from matplotlib import rcParams
 from matplotlib.patches import Rectangle
 
 # Set publication quality parameters
-rcParams['font.family'] = 'sans-serif'
-rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
-rcParams['font.size'] = 12
-rcParams['axes.labelsize'] = 14
-rcParams['axes.titlesize'] = 16
-rcParams['xtick.labelsize'] = 12
-rcParams['ytick.labelsize'] = 12
-rcParams['legend.fontsize'] = 11
+rcParams['font.family'] = 'serif'
+rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif', 'Times']
+rcParams['font.size'] = 20
+rcParams['axes.labelsize'] = 24
+rcParams['axes.titlesize'] = 26
+rcParams['xtick.labelsize'] = 20
+rcParams['ytick.labelsize'] = 20
+rcParams['legend.fontsize'] = 18
 rcParams['figure.titlesize'] = 18
 rcParams['lines.linewidth'] = 2.5
 rcParams['axes.linewidth'] = 1.5
@@ -52,27 +52,30 @@ def create_professional_nonconformity_plot():
                label='q̂ (90th percentile)', alpha=0.9)
 
     # Clean styling - no title for professional papers
-    ax.set_xlabel('Nonconformity Score', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Frequency', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Nonconformity Score', fontsize=24, fontweight='bold')
+    ax.set_ylabel('Frequency', fontsize=24, fontweight='bold')
 
     # Subtle grid
     ax.grid(True, alpha=0.2, linestyle='-', linewidth=0.5, color='gray')
     ax.set_axisbelow(True)
 
-    # Bold tick labels
+    # Set tick parameters for larger font
+    ax.tick_params(axis='both', which='major', labelsize=20, width=1.5, length=5)
+
+    # Bold tick labels with larger font
     for label in ax.get_xticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(10)
+        label.set_fontsize(20)
     for label in ax.get_yticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(10)
+        label.set_fontsize(20)
 
     # Set x-axis limits
     ax.set_xlim(-1.5, 0.2)
 
     # Simple legend for q_hat only - position to the left to avoid overlap
     legend = ax.legend(loc='upper left', frameon=True, fancybox=False,
-                      shadow=False, borderpad=0.8, prop={'weight': 'bold', 'size': 10})
+                      shadow=False, borderpad=0.8, prop={'weight': 'bold', 'size': 14})
     legend.get_frame().set_facecolor('white')
     legend.get_frame().set_edgecolor('black')
     legend.get_frame().set_linewidth(1.0)

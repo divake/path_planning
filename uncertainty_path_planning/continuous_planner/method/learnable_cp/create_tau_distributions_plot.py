@@ -9,14 +9,14 @@ import json
 from matplotlib import rcParams
 
 # Set publication quality parameters
-rcParams['font.family'] = 'sans-serif'
-rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
-rcParams['font.size'] = 12
-rcParams['axes.labelsize'] = 14
-rcParams['axes.titlesize'] = 16
-rcParams['xtick.labelsize'] = 12
-rcParams['ytick.labelsize'] = 12
-rcParams['legend.fontsize'] = 11
+rcParams['font.family'] = 'serif'
+rcParams['font.serif'] = ['Times New Roman', 'DejaVu Serif', 'Times']
+rcParams['font.size'] = 20
+rcParams['axes.labelsize'] = 24
+rcParams['axes.titlesize'] = 26
+rcParams['xtick.labelsize'] = 20
+rcParams['ytick.labelsize'] = 20
+rcParams['legend.fontsize'] = 18
 rcParams['figure.titlesize'] = 18
 rcParams['lines.linewidth'] = 2.5
 rcParams['axes.linewidth'] = 1.5
@@ -77,42 +77,47 @@ def create_professional_tau_distribution():
     # Prepare data for box plot
     noise_types = ['transparency', 'occlusion', 'localization', 'combined']
     noise_data = [tau_by_noise[k] for k in noise_types]
-    noise_labels = ['Transparency', 'Occlusion', 'Localization', 'Combined']
+    noise_labels = ['N1', 'N2', 'N3', 'Comb']  # Abbreviated labels for publication
 
-    # Create box plot with professional styling
+    # Create box plot with professional styling - bolder and denser
     bp = ax.boxplot(noise_data, labels=noise_labels,
                     patch_artist=True,
-                    medianprops=dict(color='#D32F2F', linewidth=2),  # Red median line
-                    boxprops=dict(facecolor='#E3F2FD', edgecolor='black', linewidth=1.5),  # Light blue boxes
-                    whiskerprops=dict(color='black', linewidth=1.5),
-                    capprops=dict(color='black', linewidth=1.5),
+                    widths=0.6,  # Wider boxes for more prominent appearance
+                    medianprops=dict(color='#D32F2F', linewidth=3.5),  # Thicker red median line
+                    boxprops=dict(facecolor='#E3F2FD', edgecolor='black', linewidth=2.5),  # Thicker box borders
+                    whiskerprops=dict(color='black', linewidth=2.5),  # Thicker whiskers
+                    capprops=dict(color='black', linewidth=2.5),  # Thicker caps
                     flierprops=dict(marker='o', markerfacecolor='white',
-                                  markersize=6, markeredgecolor='black',
-                                  markeredgewidth=1.5))
+                                  markersize=8, markeredgecolor='black',  # Larger outliers
+                                  markeredgewidth=2.0))
 
     # Clean styling - no title for professional papers
-    ax.set_xlabel('Noise Type', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Tau (m)', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Noise Type', fontsize=24, fontweight='bold')
+    ax.set_ylabel('Tau (m)', fontsize=24, fontweight='bold')
 
     # Subtle grid
     ax.grid(True, alpha=0.2, linestyle='-', linewidth=0.5, color='gray')
     ax.set_axisbelow(True)
 
-    # Bold tick labels
+    # Set tick parameters for larger font
+    ax.tick_params(axis='both', which='major', labelsize=20, width=1.5, length=5)
+
+    # Bold tick labels with larger font
     for label in ax.get_xticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(10)
+        label.set_fontsize(20)
     for label in ax.get_yticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(10)
+        label.set_fontsize(20)
 
     # Set y-axis limits to match original plot
     ax.set_ylim(0.12, 0.40)
 
     # Print statistics for verification
     print("\nActual Data Statistics:")
+    full_names = ['Transparency', 'Occlusion', 'Localization', 'Combined']
     for i, (noise_type, data) in enumerate(zip(noise_types, noise_data)):
-        print(f"{noise_labels[i]:15s}: median={np.median(data):.3f}, mean={np.mean(data):.3f}, "
+        print(f"{full_names[i]:15s}: median={np.median(data):.3f}, mean={np.mean(data):.3f}, "
               f"std={np.std(data):.3f}, min={np.min(data):.3f}, max={np.max(data):.3f}")
 
     # Adjust layout
